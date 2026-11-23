@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gravity.io</title>
+  <meta name="description" content="Start as a stray rock, absorb everything smaller than you, and grow into a black hole. Bigger bodies pull you in with gravity.">
+  <meta name="theme-color" content="#04050c">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='34' rx='29' ry='9' fill='none' stroke='%23ffb25c' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='15' fill='%2304050c' stroke='%23ffd9a8' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;600;700;800&family=Unbounded:wght@500;700;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Gravity.io playing field"></canvas>
+  <div id="vignette" class="vignette" aria-hidden="true"></div>
+  <div id="danger" class="danger-glow" aria-hidden="true"></div>
+
+  <div class="toolbar">
+    <button id="btn-pause" class="icon-btn" type="button" aria-label="Pause" title="Pause (Esc)" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+    </button>
+    <button id="btn-mute" class="icon-btn" type="button" aria-label="Mute sound" title="Sound (M)">
+      <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 9l5 6M21 9l-5 6" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div id="hud" class="hud" hidden>
+    <section class="panel stats" aria-label="Your body">
+      <div class="stats-top">
+        <span class="tier-name" id="hud-tier">Asteroid</span>
+        <span class="rank" id="hud-rank">#–</span>
+      </div>
+      <div class="mass-row"><span class="mass" id="hud-mass">10</span><span class="unit">mass</span></div>
+      <div class="bar" aria-hidden="true"><div class="bar-fill" id="hud-bar"></div></div>
+      <div class="next" id="hud-next">Moon at 35</div>
+    </section>
+
+    <section class="panel board" aria-label="Leaderboard">
+      <h2>Heaviest bodies</h2>
+      <ol id="hud-board"></ol>
+    </section>
+
+    <canvas id="minimap" class="minimap" aria-label="System map"></canvas>
+
+    <div id="feed" class="feed" aria-live="polite"></div>
+
+    <div class="abilities">
+      <div class="ability" id="ab-boost"><kbd>Space</kbd><span class="ab-name">Boost</span><small>burns mass</small></div>
+      <div class="ability" id="ab-surge"><kbd>E</kbd><span class="ab-name">Gravity surge</span><small id="ab-surge-cd">ready</small></div>
+    </div>
+
+    <div id="banner" class="banner" aria-live="polite"></div>
+
+    <div class="touch-controls">
+      <button id="btn-surge" class="touch-btn surge" type="button">Surge</button>
+      <button id="btn-boost" class="touch-btn boost" type="button">Boost</button>
+    </div>
+  </div>
+
+  <div id="menu" class="screen menu">
+    <div class="menu-grid">
+      <header class="brand">
+        <p class="eyebrow">A survival game about mass</p>
+        <h1 class="logo" aria-label="Gravity.io"><span class="sag" aria-hidden="true"><span style="--d:0">G</span><span style="--d:.45">r</span><span style="--d:.8">a</span><span style="--d:1">v</span><span style="--d:.8">i</span><span style="--d:.45">t</span><span style="--d:0">y</span></span><span class="tld" aria-hidden="true">.io</span></h1>
+        <p class="tagline">Start as a stray rock. Absorb anything lighter than you, and stay out of the gravity wells of anything heavier.</p>
+      </header>
+
+      <form id="start-form" class="panel launch" autocomplete="off">
+        <label for="name-input">Name your body</label>
+        <input id="name-input" name="name" maxlength="16" spellcheck="false" placeholder="Unnamed rock">
+        <fieldset class="hues">
+          <legend>Surface color</legend>
+          <div id="hue-list" class="hue-list"></div>
+        </fieldset>
+        <button class="play-btn" type="submit">Launch <kbd>Enter</kbd></button>
+        <p class="best" id="best-line">No record yet. Your best run is saved on this device.</p>
+      </form>
+
+      <section class="panel ladder" aria-labelledby="ladder-title">
+        <h2 id="ladder-title">Evolution</h2>
+        <ol id="ladder"></ol>
+      </section>
+
+      <section class="panel guide" aria-labelledby="controls-title">
+        <h2 id="controls-title">Controls</h2>
+        <dl class="controls">
+          <div><dt>Mouse or WASD</dt><dd>Steer</dd></div>
+          <div><dt>Space or left click</dt><dd>Boost, burns mass</dd></div>
+          <div><dt>E or right click</dt><dd>Gravity surge</dd></div>
+          <div><dt>Esc</dt><dd>Pause</dd></div>
+          <div><dt>M</dt><dd>Sound on or off</dd></div>
+        </dl>
+        <h2>Field notes</h2>
+        <ul class="notes">
+          <li>You can absorb any body 20% lighter than you. Green names are prey, red names are predators.</li>
+          <li>The solid red ring around a predator is its point of no return. Inside it, only a boost gets you out.</li>
+          <li>Gravity surge doubles your pull for a few seconds. It recharges in 14 seconds.</li>
+          <li>Nebulae hide you from hunters but slow you down.</li>
+          <li>Wormholes take bodies up to 400 mass across the system.</li>
+          <li>A supernova blasts everything nearby, then leaves stardust and a pulsar worth 45.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <div id="death" class="screen death" hidden>
+    <div class="panel death-card" role="dialog" aria-labelledby="death-title">
+      <p class="eyebrow danger">Absorbed</p>
+      <h2 id="death-title">Pulled in</h2>
+      <p id="death-sub" class="death-sub"></p>
+      <dl class="death-stats" id="death-stats"></dl>
+      <p id="death-record" class="record" hidden>New personal record</p>
+      <div class="actions">
+        <button id="btn-again" class="play-btn" type="button">Play again <kbd>Enter</kbd></button>
+        <button id="btn-menu" class="ghost-btn" type="button">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pause" class="screen pause" hidden>
+    <div class="panel pause-card" role="dialog" aria-labelledby="pause-title">
+      <h2 id="pause-title">Paused</h2>
+      <p class="death-sub">The system waits for you.</p>
+      <div class="actions">
+        <button id="btn-resume" class="play-btn" type="button">Resume <kbd>Esc</kbd></button>
+        <button id="btn-quit" class="ghost-btn" type="button">Quit to menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/textures.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
