@@ -171,3 +171,4 @@ to play ten minutes of bots-only time without a browser. It prints who's on top 
   <br>
   <sub>Every planet, icon and screenshot on this page comes from the game's own renderer.</sub>
 </p>
+
