@@ -30,7 +30,7 @@ You start as a rock the size of a pebble. Everything with mass pulls on everythi
 | <img src="assets/readme/k-boost.png" alt="" width="48"> | **Boost** | Hold <kbd>Space</kbd> or left click. Faster, but it burns mass | Hold **Boost** |
 | <img src="assets/readme/k-surge.png" alt="" width="48"> | **Gravity surge** | <kbd>E</kbd>, <kbd>Shift</kbd> or right click. Pulls 2.2× harder for 2.6 s, recharges in 14 s | Tap **Surge** |
 
-Pause with <kbd>Esc</kbd>, mute with <kbd>M</kbd>, full screen with <kbd>F</kbd>. On a phone those are the buttons at the top.
+Pause with <kbd>Esc</kbd>, mute with <kbd>M</kbd>, turn the music on or off with <kbd>N</kbd>, go full screen with <kbd>F</kbd>. On a phone those are the buttons at the top and the switches on the pause screen.
 
 <p align="center">
   <img src="assets/readme/phones.png" alt="Gravity.io on a phone: the menu, and a rocky planet steering with the touch stick past a heavier body" width="640">
@@ -96,7 +96,7 @@ To host your own copy on GitHub Pages: **Settings → Pages**, set the source to
 
 ## How it's made
 
-Plain JavaScript on a 2D canvas, no libraries. Every planet and icon is drawn in code, and the sound is synthesized live with WebAudio, so there are no art or audio files to load.
+Plain JavaScript on a 2D canvas, no libraries. Every planet and icon is drawn in code, and every sound is synthesized live with WebAudio, so the game loads no art or audio files.
 
 The look follows a few fixed rules, written up at the top of `js/textures.js`:
 
@@ -104,9 +104,28 @@ The look follows a few fixed rules, written up at the top of `js/textures.js`:
 - **Hard shading.** Two flat steps, never a smooth gradient.
 - **Only light sources glow**, and their glow is stepped.
 - **A fixed palette.** Body colours come from eight hues in five tones each. Stars always use real star colours, and accretion disks always burn hot.
-- **Stardust chimes** up a pentatonic scale when you eat it in a run.
 
 <p align="center"><img src="assets/readme/palette.png" alt="The palette: eight body hues in five tones each, plus ink, plate, bone, ember, threat and prey" width="760"></p>
+
+### How it sounds
+
+<p align="center">
+  <a href="assets/readme/sound-reel.mp3"><img src="assets/readme/sound-map.png" alt="Waveform of the sound reel, labelled from the menu music through every evolution, a supernova and a death" width="100%"></a>
+  <br>
+  <b><a href="assets/readme/sound-reel.mp3">Listen to the 72-second sound reel</a></b>
+  <br>
+  <sub>Every sound in the game, in the order you'd meet them, rendered by the game's own audio engine.</sub>
+</p>
+
+The sound follows rules too, written up at the top of `js/audio.js`:
+
+- **One key.** Every pitched sound is in D major pentatonic, so nothing clashes with the music or with anything else.
+- **Toys in a big room.** Pickups are glassy FM mallets, mass is soft sub-bass, and whooshes are filtered noise. Everything shares one generated reverb, so it all sits in the same space.
+- **The music grows with you.** It's generated as you play. Each form adds a layer: more melody, then bass, an arpeggio, high bells. A black hole turns the harmony minor and adds a heartbeat, and being absorbed sinks it under water.
+- **Danger is audible.** Being pulled in muffles the music and fades in a low pulse that quickens as the pull gets stronger.
+- **Sounds sit where they happen**, panned to the side of the screen they come from and quieter with distance.
+
+The small touches: a run of stardust climbs the scale, so a clean sweep plays a melody. Absorbing a body plays a stab on whatever chord the music is on. Each colour swatch on the menu is its own note, and a supernova's countdown ticks faster as it gets closer.
 
 <details>
 <summary><b>Project layout</b></summary>
@@ -120,7 +139,7 @@ js/world.js           the simulation: gravity, absorbing, collisions, food, even
 js/ai.js              bot brains
 js/textures.js        procedural surfaces and the art rules
 js/renderer.js        canvas drawing
-js/audio.js           synthesized sound
+js/audio.js           sound engine, effects and the generative score
 js/input.js           mouse, keyboard, touch stick
 js/hud.js             HUD, menu and screens
 js/game.js            game states, loop, camera, device features

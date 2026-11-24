@@ -116,7 +116,7 @@
         <div><dt>Steer</dt><dd>Mouse, or WASD / arrows</dd></div>
         <div><dt>Boost</dt><dd>Hold Space or left click</dd></div>
         <div><dt>Gravity surge</dt><dd>E, Shift or right click</dd></div>
-        <div><dt>Pause · sound · full screen</dt><dd>Esc · M · F</dd></div>
+        <div><dt>Pause · sound · music · full screen</dt><dd>Esc · M · N · F</dd></div>
       </dl>
       <dl class="controls touch-only">
         <div><dt>Steer</dt><dd>Drag anywhere</dd></div>
@@ -153,6 +153,10 @@
   <div id="pause" class="screen pause" hidden>
     <div class="plate pause-card" role="dialog" aria-labelledby="pause-title">
       <h2 id="pause-title">Paused</h2>
+      <div class="toggles">
+        <button id="tg-sound" class="toggle" type="button" aria-pressed="true">Sound</button>
+        <button id="tg-music" class="toggle" type="button" aria-pressed="true">Music</button>
+      </div>
       <div class="actions">
         <button id="btn-resume" class="btn btn-primary" type="button">Resume</button>
         <button id="btn-quit" class="btn btn-ghost" type="button">Quit to menu</button>

@@ -466,6 +466,23 @@ body:not(.touch) .touch-only { display: none !important; }
 .death-small { font: 600 13.5px var(--text); color: var(--bone-faint); }
 .record { font: 800 15px var(--display); color: var(--ember); }
 .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.toggles { display: flex; gap: 10px; flex-wrap: wrap; }
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ink);
+  box-shadow: inset 2px 3px 0 rgba(0, 0, 0, 0.45);
+  font: 800 14px var(--text);
+  color: var(--bone);
+  cursor: pointer;
+}
+.toggle::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--prey); }
+.toggle[aria-pressed='false'] { color: var(--bone-faint); }
+.toggle[aria-pressed='false']::before { background: var(--bone-faint); }
 
 /* ---------- touch ---------- */
 

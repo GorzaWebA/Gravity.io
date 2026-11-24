@@ -136,6 +136,11 @@ class Hud {
   setMuted(muted) {
     this.el.mute.classList.toggle('muted', muted);
     this.el.mute.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+    document.getElementById('tg-sound').setAttribute('aria-pressed', String(!muted));
+  }
+
+  setMusic(on) {
+    document.getElementById('tg-music').setAttribute('aria-pressed', String(on));
   }
 
   /* ---------- in-game ---------- */

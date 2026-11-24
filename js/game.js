@@ -29,6 +29,8 @@ class Game {
 
     this.hud.initMenu(this.prefs, this.best);
     this.hud.setMuted(this.sfx.muted);
+    this.hud.setMusic(this.sfx.musicOn);
+    this.wasTop = false;
     this.hud.setScreen('menu');
     this._bindUi();
     this._setupFullscreen();
@@ -58,6 +60,23 @@ class Game {
     on('btn-pause', () => this.setPaused(true));
     on('btn-mute', () => this.toggleMute());
     on('btn-fullscreen', () => this.toggleFullscreen());
+    on('tg-sound', () => this.toggleMute());
+    on('tg-music', () => this.toggleMusic());
+
+    // Audio may only start after a gesture: the first click or key press anywhere starts the music
+    const firstGesture = () => {
+      this.sfx.unlock();
+      window.removeEventListener('pointerdown', firstGesture, true);
+      window.removeEventListener('keydown', firstGesture, true);
+    };
+    window.addEventListener('pointerdown', firstGesture, true);
+    window.addEventListener('keydown', firstGesture, true);
+
+    // Every button ticks; colour swatches, abilities and Play have sounds of their own
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest && e.target.closest('button');
+      if (btn && !btn.matches('.hue-btn, .ability, .play-btn')) this.sfx.play('click');
+    });
   }
 
   /* ---------- device integration ---------- */
@@ -150,6 +169,18 @@ class Game {
   setHue(hue) {
     this.prefs.hue = hue;
     storageSet('gravity.hue', hue);
+    this.sfx.unlock();
+    this.sfx.play('hue', { i: Math.max(0, PLAYER_HUES.indexOf(hue)) });
+  }
+
+  toggleMusic() {
+    this.sfx.unlock();
+    this.hud.setMusic(this.sfx.toggleMusic());
+  }
+
+  /* Stereo position of a world point, from where it sits on screen. */
+  _pan(x) {
+    return clamp(((x - this.cam.x) * this.cam.zoom) / (this.renderer.w / 2), -1, 1) * 0.7;
   }
 
   toggleMute() {
@@ -168,6 +199,8 @@ class Game {
     this.prefs.name = name === 'Unnamed rock' ? '' : name;
     storageSet('gravity.name', this.prefs.name);
     this.sfx.unlock();
+    this.sfx.play('launch');
+    this.wasTop = false;
     this.world = new World();
     this.player = this.world.spawnPlayer(name, this.prefs.hue);
     this.killer = null;
@@ -256,6 +289,7 @@ class Game {
       return;
     }
     if (code === 'KeyM') this.toggleMute();
+    else if (code === 'KeyN') this.toggleMusic();
     else if (code === 'KeyF') this.toggleFullscreen();
     else if (code === 'Escape' || code === 'KeyP') {
       if (this.state === 'playing') this.setPaused(true);
@@ -307,6 +341,15 @@ class Game {
     });
     this.flash = Math.max(0, this.flash - dt * 1.6);
     this.sfx.setBoost(alive && p.boosting);
+    this.sfx.update(this.state, p && this.state !== 'menu' ? p.tier : 0, this.danger);
+    if (alive) {
+      const top = p.rank === 1 && this.world.time - p.stats.born > 4;
+      if (top && !this.wasTop) {
+        this.sfx.play('crown');
+        this.hud.feed('You are the heaviest body in the system.', 'you');
+      }
+      this.wasTop = top;
+    }
     this.hud.update(dt, this.world, p, this.state);
     if (this.state === 'menu') this.hud.updateMenu(this.time, this.prefs.hue);
 
@@ -411,14 +454,14 @@ class Game {
           if (e.victim === p) {
             this.onPlayerDeath(e.eater);
           } else if (e.eater === p) {
-            this.sfx.play('absorb', 1);
+            this.sfx.play('absorb', { mine: true, size: e.gain });
             this.buzz(25);
             this.cam.shake += 5 + Math.min(12, e.gain / 25);
             w.floatText(p.x, p.y - p.r, `+${formatMass(e.gain)}`, COLORS.prey, 22);
             this.hud.feed(`You absorbed <b>${esc(e.victim.name)}</b> <span class="gain">+${formatMass(e.gain)}</span>`, 'you');
           } else {
             const vol = this._vol(e.eater.x, e.eater.y);
-            this.sfx.play('absorb', vol * 0.5);
+            this.sfx.play('absorb', { vol: vol * 0.5, pan: this._pan(e.eater.x), size: e.gain });
             if (e.victim.mass > 40 || e.eater.rank <= 3 || vol > 0.3) {
               this.hud.feed(`<b>${esc(e.eater.name)}</b> absorbed <b>${esc(e.victim.name)}</b>`);
             }
@@ -427,10 +470,10 @@ class Game {
         }
         case 'eat':
           if (e.food.type === FOOD_ROCK) {
-            this.sfx.play('rock');
+            this.sfx.play('rock', { pan: this._pan(e.food.x) });
             w.floatText(e.food.x, e.food.y, `+${Math.round(e.food.mass)}`, COLORS.bone, 13);
           } else {
-            this.sfx.play('dust');
+            this.sfx.play('dust', { pan: this._pan(e.food.x) * 0.6 });
           }
           break;
         case 'eatBig': {
@@ -448,7 +491,7 @@ class Game {
           const tier = TIERS[e.to];
           if (e.body === p) {
             if (e.to > e.from) {
-              this.sfx.play('tierUp');
+              this.sfx.play('tierUp', { tier: e.to });
               this.buzz([20, 40, 20]);
               this.hud.banner('You became', `${/^[aeiou]/i.test(tier.name) ? 'an' : 'a'} ${tier.name}`, tier.perk, 'tier');
               this.hud.feed(`You became a <b>${tier.name}</b>.`, 'you');
@@ -465,23 +508,23 @@ class Game {
         }
         case 'surge':
           if (e.body === p) this.sfx.play('surge', 1);
-          else this.sfx.play('surge', this._vol(e.body.x, e.body.y, 1600) * 0.6);
+          else this.sfx.play('surge', { vol: this._vol(e.body.x, e.body.y, 1600) * 0.6, pan: this._pan(e.body.x) });
           break;
         case 'collide':
           if (e.a === p || e.b === p) {
             this.cam.shake += 6;
-            this.sfx.play('collide', 1);
+            this.sfx.play('collide', { pan: this._pan(e.x) });
             this.buzz(15);
           }
           break;
         case 'supernovaWarning':
-          this.sfx.play('warn');
+          this.sfx.play('warn', { vol: clamp(1 - Math.hypot(e.sn.x - this.cam.x, e.sn.y - this.cam.y) / 4500, 0.3, 1), pan: this._pan(e.sn.x) });
           this.hud.banner('A star is collapsing', 'Supernova', 'Get outside the red ring.', 'warn');
           this.hud.feed('A star is about to go supernova.', 'warn');
           break;
         case 'supernova': {
           const d = Math.hypot(e.x - this.cam.x, e.y - this.cam.y);
-          this.sfx.play('supernova', clamp(1 - d / 4000, 0.15, 1));
+          this.sfx.play('supernova', { vol: clamp(1 - d / 4000, 0.15, 1), pan: this._pan(e.x) });
           this.flash = Math.max(this.flash, 0.75 * clamp(1 - d / 1800, 0, 1));
           this.cam.shake += 22 * clamp(1 - d / 2200, 0, 1);
           break;
@@ -494,7 +537,10 @@ class Game {
           }
           break;
         case 'shock':
-          if (e.body === p) this.cam.shake += 10 * e.power;
+          if (e.body === p) {
+            this.cam.shake += 10 * e.power;
+            this.sfx.play('shock', { vol: 0.4 + e.power });
+          }
           break;
         case 'wormhole':
           if (e.body === p) {
