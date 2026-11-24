@@ -1,23 +1,26 @@
 'use strict';
 
+/*
+ * Canvas rendering in the toy-solar-system style described in textures.js.
+ * World layers: void + stars, nebulae (soft), spacetime grid, wormholes, food, bodies, effects.
+ * Screen layers: labels, floating numbers, off-screen markers. Vignettes are CSS overlays.
+ */
 class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.maxDpr = 2;
-    this.tex = new TextureBank();
     this.dpr = 1;
     this.w = 1;
     this.h = 1;
-    this.backdrop = this._makeBackdrop(1024);
-    this.starSprites = [this._makeStarSprite(false), this._makeStarSprite(true)];
-    this.starLayers = [this._makeStars(1100, 320, 1.0, 0.03), this._makeStars(900, 160, 1.5, 0.08), this._makeStars(760, 50, 2.2, 0.18)];
-    this.vignetteEl = document.getElementById('vignette');
-    this.dangerEl = document.getElementById('danger');
+    this.tex = new TextureBank();
+    this.starLayers = [this._makeStars(1100, 220, 0.03, 0.9), this._makeStars(800, 90, 0.08, 1.4)];
+    this.starDot = this.tex._makeDot('#ffffff');
     this.nebulaSprites = new Map();
     this._warpSrc = [];
     this._sorted = [];
     this._dangerShown = -1;
+    this.dangerEl = document.getElementById('danger');
     this.resize();
   }
 
@@ -31,8 +34,6 @@ class Renderer {
     this.canvas.style.height = `${this.h}px`;
   }
 
-  /* ---------- frame ---------- */
-
   render(world, cam, opts) {
     const ctx = this.ctx, dpr = this.dpr, w = this.w, h = this.h, z = cam.zoom, t = opts.time;
     const focus = opts.focus;
@@ -40,6 +41,8 @@ class Renderer {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = COLORS.ink;
+    ctx.fillRect(0, 0, w, h);
     this._drawStars(cam);
 
     const ox = w / 2 - cam.x * z + cam.sx, oy = h / 2 - cam.y * z + cam.sy;
@@ -50,90 +53,49 @@ class Renderer {
     this._drawNebulae(world, view);
     this._drawGrid(world, view, z);
     this._drawBoundary(world, view, z);
-    this._drawWormholes(world, view, z, focus);
+    this._drawWormholes(world, view, z, t, focus);
     this._drawFood(world, view, z, t);
     this._drawSupernovae(world, z, t);
     this._drawGhosts(world, t);
     this._drawBodies(world, view, z, t, focus);
-    this._drawParticles(world, view);
+    this._drawParticles(world, view, z);
     this._drawShockwaves(world, z);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const toScreen = (x, y) => ({ x: (x - cam.x) * z + w / 2 + cam.sx, y: (y - cam.y) * z + h / 2 + cam.sy });
-    this._drawLabels(world, z, focus, toScreen);
-    this._drawTexts(world, toScreen);
+    if (opts.labels !== false) {
+      this._drawLabels(world, z, focus, toScreen);
+      this._drawTexts(world, toScreen);
+    }
     this._drawIndicators(world, toScreen, t, z);
-    this._drawVignette(opts.danger || 0, t);
+    this._drawDanger(opts.danger || 0, t);
     if (opts.flash > 0) {
-      ctx.fillStyle = `rgba(255,248,235,${Math.min(0.85, opts.flash)})`;
+      ctx.fillStyle = `rgba(241,234,217,${Math.min(0.8, opts.flash)})`;
       ctx.fillRect(0, 0, w, h);
     }
   }
 
+  /* Text with the UI's hard drop shadow (down-right, away from the light). */
+  _shadowText(text, x, y, color, off = 2) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(9,11,24,0.9)';
+    ctx.fillText(text, x + off * 0.6, y + off);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
   /* ---------- background ---------- */
 
-  /* Opaque, tileable deep-space backdrop with faint haze. Drawn first, so it doubles as the clear. */
-  _makeBackdrop(size) {
-    const c = makeCanvas(size, size);
-    c.logicalSize = size;
-    const g = c.getContext('2d');
-    g.fillStyle = '#04050c';
-    g.fillRect(0, 0, size, size);
-    g.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 6; i++) {
-      const x = Math.random() * size, y = Math.random() * size, r = rand(160, 380);
-      const hue = pick([225, 255, 290, 200, 330]);
-      for (let ox = -1; ox <= 1; ox++) {
-        for (let oy = -1; oy <= 1; oy++) {
-          const X = x + ox * size, Y = y + oy * size;
-          const grd = g.createRadialGradient(X, Y, 0, X, Y, r);
-          grd.addColorStop(0, hsl(hue, 60, 45, 0.07));
-          grd.addColorStop(1, hsl(hue, 60, 30, 0));
-          g.fillStyle = grd;
-          g.fillRect(X - r, Y - r, r * 2, r * 2);
-        }
-      }
-    }
-    return c;
-  }
-
-  _makeStarSprite(warm) {
-    const c = makeCanvas(32, 32), g = c.getContext('2d');
-    const grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-    const col = warm ? '255,214,170' : '215,228,255';
-    grd.addColorStop(0, `rgba(${col},1)`);
-    grd.addColorStop(0.12, `rgba(${col},0.9)`);
-    grd.addColorStop(0.3, `rgba(${col},0.18)`);
-    grd.addColorStop(1, `rgba(${col},0)`);
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 32, 32);
-    return c;
-  }
-
-  /* Stars are drawn one by one rather than as full-screen layers: far cheaper to rasterize. */
-  _makeStars(size, count, maxSize, parallax) {
+  _makeStars(size, count, parallax, maxSize) {
     const stars = [];
     for (let i = 0; i < count; i++) {
-      stars.push({
-        x: Math.random() * size,
-        y: Math.random() * size,
-        s: (0.35 + maxSize * Math.pow(Math.random(), 3)) * 5,
-        warm: Math.random() < 0.18 ? 1 : 0,
-        a: rand(0.35, 1),
-      });
+      stars.push({ x: Math.random() * size, y: Math.random() * size, s: 0.8 + maxSize * Math.pow(Math.random(), 3), a: rand(0.25, 0.75) });
     }
     return { size, stars, parallax };
   }
 
   _drawStars(cam) {
     const ctx = this.ctx, w = this.w, h = this.h;
-    const bd = this.backdrop, B = bd.logicalSize;
-    let bx = (-cam.x * 0.015) % B, by = (-cam.y * 0.015) % B;
-    if (bx > 0) bx -= B;
-    if (by > 0) by -= B;
-    for (let x = bx; x < w; x += B) for (let y = by; y < h; y += B) ctx.drawImage(bd, x, y, B, B);
-
-    ctx.globalCompositeOperation = 'lighter';
     for (const layer of this.starLayers) {
       const S = layer.size;
       let ox = (-cam.x * layer.parallax) % S, oy = (-cam.y * layer.parallax) % S;
@@ -143,15 +105,14 @@ class Renderer {
         for (let ty = oy; ty < h; ty += S) {
           for (const st of layer.stars) {
             const x = tx + st.x, y = ty + st.y;
-            if (x < -8 || x > w + 8 || y < -8 || y > h + 8) continue;
+            if (x < -4 || x > w + 4 || y < -4 || y > h + 4) continue;
             ctx.globalAlpha = st.a;
-            ctx.drawImage(this.starSprites[st.warm], x - st.s / 2, y - st.s / 2, st.s, st.s);
+            ctx.drawImage(this.starDot, x - st.s / 2, y - st.s / 2, st.s, st.s);
           }
         }
       }
     }
     ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
   }
 
   _nebulaSprite(n) {
@@ -161,27 +122,17 @@ class Renderer {
     c = makeCanvas(S, S);
     const g = c.getContext('2d');
     const R = mulberry32(n.seed);
-    g.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 28; i++) {
-      const a = R() * TAU, d = R() * S * 0.26;
+    for (let i = 0; i < 9; i++) {
+      const a = R() * TAU, d = R() * S * 0.22;
       const x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d;
-      const r = S * (0.1 + R() * 0.2);
-      const hue = n.hue + (R() - 0.5) * 60;
+      const r = S * (0.18 + R() * 0.16);
       const grd = g.createRadialGradient(x, y, 0, x, y, r);
-      grd.addColorStop(0, hsl(hue, 75, 55, 0.11));
-      grd.addColorStop(1, hsl(hue, 75, 40, 0));
+      const hue = n.hue + (R() - 0.5) * 30;
+      grd.addColorStop(0, hsl(hue, 45, 46, 0.16));
+      grd.addColorStop(0.6, hsl(hue, 45, 40, 0.07));
+      grd.addColorStop(1, hsl(hue, 45, 36, 0));
       g.fillStyle = grd;
       g.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    for (let i = 0; i < 45; i++) {
-      const a = R() * TAU, d = R() * S * 0.33;
-      const x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d;
-      const r = 1 + R() * 3;
-      const grd = g.createRadialGradient(x, y, 0, x, y, r * 4);
-      grd.addColorStop(0, 'rgba(255,255,255,0.5)');
-      grd.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grd;
-      g.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
     }
     this.nebulaSprites.set(n.id, c);
     return c;
@@ -192,10 +143,8 @@ class Renderer {
     for (const n of world.nebulae) {
       const s = n.r * 1.35;
       if (n.x + s < view.l || n.x - s > view.r || n.y + s < view.t || n.y - s > view.b) continue;
-      ctx.globalAlpha = 0.95;
       ctx.drawImage(this._nebulaSprite(n), n.x - s, n.y - s, s * 2, s * 2);
     }
-    ctx.globalAlpha = 1;
   }
 
   /* The signature effect: a spacetime grid that sags toward everything with mass. */
@@ -205,10 +154,10 @@ class Renderer {
     for (const b of world.bodies) {
       const reach = b.drawR * 7;
       if (b.x + reach < view.l || b.x - reach > view.r || b.y + reach < view.t || b.y - reach > view.b) continue;
-      const A = Math.min(0.8, 0.4 * TIERS[b.tier].grav * (b.surgeT > 0 ? 1.5 : 1));
+      const A = Math.min(0.8, 0.42 * TIERS[b.tier].grav * (b.surgeT > 0 ? 1.5 : 1));
       src.push({ x: b.x, y: b.y, R2: (b.drawR * 1.5) ** 2, A, cut2: reach * reach });
     }
-    for (const w of world.wormholes) src.push({ x: w.x, y: w.y, R2: (w.r * 1.7) ** 2, A: 0.55, cut2: (w.r * 7) ** 2 });
+    for (const w of world.wormholes) src.push({ x: w.x, y: w.y, R2: (w.r * 1.8) ** 2, A: 0.62, cut2: (w.r * 8) ** 2 });
     for (const sn of world.supernovae) {
       const k = 1 - sn.t / sn.dur;
       src.push({ x: sn.x, y: sn.y, R2: (100 + 220 * k) ** 2, A: 0.25 + 0.5 * k, cut2: 1000 * 1000 });
@@ -263,8 +212,8 @@ class Renderer {
         first = false;
       }
     }
-    ctx.strokeStyle = 'rgba(118,146,255,0.11)';
-    ctx.lineWidth = 1 / z;
+    ctx.strokeStyle = COLORS.fabric;
+    ctx.lineWidth = 1.2 / z;
     ctx.stroke();
     ctx.restore();
   }
@@ -278,83 +227,69 @@ class Renderer {
     ctx.beginPath();
     ctx.rect(view.l, view.t, view.r - view.l, view.b - view.t);
     ctx.arc(0, 0, R, 0, TAU, true);
-    ctx.fillStyle = 'rgba(1,1,6,0.6)';
+    ctx.fillStyle = 'rgba(4,5,12,0.7)';
     ctx.fill('evenodd');
     ctx.beginPath();
     ctx.arc(0, 0, R, 0, TAU);
-    ctx.strokeStyle = 'rgba(255,120,150,0.07)';
-    ctx.lineWidth = 50 / z;
+    ctx.strokeStyle = 'rgba(255,84,104,0.55)';
+    ctx.lineWidth = 3 / z;
+    ctx.setLineDash([2 / z, 12 / z]);
+    ctx.lineCap = 'round';
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,140,165,0.4)';
-    ctx.lineWidth = 2 / z;
-    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
     ctx.restore();
   }
 
-  _drawWormholes(world, view, z, focus) {
+  /* Wormholes: concentric rings drawn in the grid's line language, slowly turning. */
+  _drawWormholes(world, view, z, t, focus) {
     const ctx = this.ctx;
     for (const wh of world.wormholes) {
-      const s = wh.r * 3;
+      const s = wh.r * 2;
       if (wh.x + s < view.l || wh.x - s > view.r || wh.y + s < view.t || wh.y - s > view.b) continue;
       const sealed = focus && focus.mass > CONFIG.WORMHOLE_MAX_MASS;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = sealed ? 0.25 : 0.6;
-      ctx.drawImage(this.tex.glow(wh.hue, 85, 58), wh.x - s, wh.y - s, s * 2, s * 2);
       ctx.save();
       ctx.translate(wh.x, wh.y);
-      ctx.rotate(-wh.spin);
       ctx.globalAlpha = sealed ? 0.35 : 1;
-      const sp = wh.r * 1.5;
-      ctx.drawImage(this.tex.spiral(wh.hue), -sp, -sp, sp * 2, sp * 2);
-      ctx.restore();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-      const grd = ctx.createRadialGradient(wh.x, wh.y, 0, wh.x, wh.y, wh.r * 0.7);
-      grd.addColorStop(0, 'rgba(0,0,0,1)');
-      grd.addColorStop(0.6, 'rgba(0,0,0,0.85)');
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grd;
+      for (let k = 0; k < 6; k++) {
+        const rad = wh.r * (1.5 - k * 0.2);
+        ctx.strokeStyle = tone(wh.hue, 1, k % 2 ? 'light' : 'base', 0.35 + k * 0.11);
+        ctx.lineWidth = wh.r * 0.07;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rad, rad * 0.9, wh.spin * (0.4 + k * 0.25) * (k % 2 ? -1 : 1), 0, TAU);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#000';
       ctx.beginPath();
-      ctx.arc(wh.x, wh.y, wh.r * 0.7, 0, TAU);
+      ctx.arc(0, 0, wh.r * 0.42, 0, TAU);
       ctx.fill();
-      ctx.strokeStyle = hsl(wh.hue, 90, 72, sealed ? 0.25 : 0.7);
-      ctx.lineWidth = 2 / z;
-      ctx.beginPath();
-      ctx.arc(wh.x, wh.y, wh.r * 0.6, 0, TAU);
-      ctx.stroke();
+      ctx.restore();
     }
   }
 
   /* ---------- food ---------- */
 
   _drawFood(world, view, z, t) {
-    const ctx = this.ctx, food = world.food, minS = 2.6 / z;
-    ctx.globalCompositeOperation = 'lighter';
+    const ctx = this.ctx, food = world.food, minS = 2.4 / z;
     for (let i = 0; i < food.length; i++) {
       const f = food[i];
       if (f.x < view.l || f.x > view.r || f.y < view.t || f.y > view.b) continue;
       if (f.type === FOOD_DUST) {
-        const s = Math.max(f.r * 5, minS);
+        const s = Math.max(f.r * 2.2, minS);
         ctx.drawImage(this.tex.dust[f.color], f.x - s / 2, f.y - s / 2, s, s);
       } else if (f.type === FOOD_DEBRIS) {
-        const s = Math.max(f.r * 4.2, minS);
-        ctx.drawImage(this.tex.glow(f.hue, 92, 62), f.x - s / 2, f.y - s / 2, s, s);
+        const s = Math.max(f.r * 2, minS);
+        ctx.drawImage(this.tex.dot(f.hue, 72), f.x - s / 2, f.y - s / 2, s, s);
       }
     }
-    ctx.globalCompositeOperation = 'source-over';
-
     for (let i = 0; i < food.length; i++) {
       const f = food[i];
       if (f.type === FOOD_DUST || f.type === FOOD_DEBRIS) continue;
       const m = f.type === FOOD_COMET ? 400 : 40;
       if (f.x < view.l - m || f.x > view.r + m || f.y < view.t - m || f.y > view.b + m) continue;
       if (f.type === FOOD_ROCK) {
-        const s = f.r * 1.2;
-        ctx.save();
-        ctx.translate(f.x, f.y);
-        ctx.rotate(f.rot);
-        ctx.drawImage(this.tex.rocks[f.sprite], -s, -s, s * 2, s * 2);
-        ctx.restore();
+        const s = f.r * 1.15;
+        ctx.drawImage(this.tex.rocks[f.sprite], f.x - s, f.y - s, s * 2, s * 2);
       } else if (f.type === FOOD_COMET) {
         this._drawComet(f);
       } else if (f.type === FOOD_REMNANT) {
@@ -367,54 +302,48 @@ class Renderer {
     const ctx = this.ctx;
     const sp = Math.hypot(f.vx, f.vy) || 1;
     const nx = f.vx / sp, ny = f.vy / sp;
-    const L = 150 + f.mass * 7, wd = f.r * 1.25;
-    const tx = f.x - nx * L, ty = f.y - ny * L;
-    const grd = ctx.createLinearGradient(f.x, f.y, tx, ty);
-    grd.addColorStop(0, hsl(f.hue, 90, 82, 0.6));
-    grd.addColorStop(1, hsl(f.hue, 90, 60, 0));
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = grd;
+    const L = 150 + f.mass * 7;
+    const tail = (len, wd, color) => {
+      const tx = f.x - nx * len, ty = f.y - ny * len;
+      const grd = ctx.createLinearGradient(f.x, f.y, tx, ty);
+      grd.addColorStop(0, color(1));
+      grd.addColorStop(1, color(0));
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.moveTo(f.x - ny * wd, f.y + nx * wd);
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(f.x + ny * wd, f.y - nx * wd);
+      ctx.closePath();
+      ctx.fill();
+    };
+    tail(L, f.r * 1.3, (a) => tone(f.hue, 1, 'light', a * 0.35));
+    tail(L * 0.55, f.r * 0.7, (a) => `rgba(241,234,217,${a * 0.75})`);
+    steppedHalo(ctx, f.x, f.y, f.r * 0.8, tone(f.hue, 1, 'light'));
+    ctx.fillStyle = COLORS.bone;
     ctx.beginPath();
-    ctx.moveTo(f.x - ny * wd, f.y + nx * wd);
-    ctx.lineTo(tx, ty);
-    ctx.lineTo(f.x + ny * wd, f.y - nx * wd);
-    ctx.closePath();
-    ctx.fill();
-    const s = f.r * 5;
-    ctx.drawImage(this.tex.glow(f.hue, 90, 75), f.x - s / 2, f.y - s / 2, s, s);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#f4fbff';
-    ctx.beginPath();
-    ctx.arc(f.x, f.y, f.r * 0.55, 0, TAU);
+    ctx.arc(f.x, f.y, f.r * 0.6, 0, TAU);
     ctx.fill();
   }
 
   _drawRemnant(f, t) {
     const ctx = this.ctx;
-    const pulse = 0.75 + 0.25 * Math.sin(t * 9 + f.rot);
-    ctx.globalCompositeOperation = 'lighter';
-    let s = f.r * 7 * pulse;
-    ctx.drawImage(this.tex.glow(f.hue, 95, 65), f.x - s / 2, f.y - s / 2, s, s);
+    const pulse = 0.8 + 0.2 * Math.sin(t * 9 + f.rot);
+    steppedHalo(ctx, f.x, f.y, f.r * 1.4 * pulse, tone(f.hue, 1, 'light'), 1.4);
     ctx.save();
     ctx.translate(f.x, f.y);
     ctx.rotate(f.rot);
-    const L = 110;
+    ctx.fillStyle = 'rgba(241,234,217,0.55)';
     for (const dir of [1, -1]) {
-      const grd = ctx.createLinearGradient(0, 0, 0, L * dir);
-      grd.addColorStop(0, hsl(f.hue, 90, 85, 0.65));
-      grd.addColorStop(1, hsl(f.hue, 90, 60, 0));
-      ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.moveTo(-4, 0);
-      ctx.lineTo(0, L * dir);
-      ctx.lineTo(4, 0);
+      ctx.moveTo(-3.5, 0);
+      ctx.lineTo(0, 120 * dir);
+      ctx.lineTo(3.5, 0);
       ctx.fill();
     }
     ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = COLORS.bone;
     ctx.beginPath();
-    ctx.arc(f.x, f.y, f.r * 0.45, 0, TAU);
+    ctx.arc(f.x, f.y, f.r * 0.5, 0, TAU);
     ctx.fill();
   }
 
@@ -426,7 +355,7 @@ class Renderer {
       const p = g.t / g.dur, e = p * p;
       const r = g.body.drawR * (1 - p);
       if (r < 0.5) continue;
-      ctx.globalAlpha = 1 - p * 0.5;
+      ctx.globalAlpha = 1 - p * 0.4;
       this.drawBody(ctx, g.body, lerp(g.x0, g.target.x, e), lerp(g.y0, g.target.y, e), r, t);
     }
     ctx.globalAlpha = 1;
@@ -451,93 +380,89 @@ class Renderer {
 
       if (focus && focus.alive && b !== focus) {
         let color = null;
-        if (b.canEat(focus)) color = 'rgba(255,92,116,0.75)';
-        else if (focus.canEat(b)) color = 'rgba(110,240,196,0.6)';
+        if (b.canEat(focus)) color = COLORS.threat;
+        else if (focus.canEat(b)) color = COLORS.prey;
         if (color) {
           ctx.strokeStyle = color;
-          ctx.lineWidth = 2 / z;
+          ctx.lineWidth = 2.5 / z;
           ctx.beginPath();
-          ctx.arc(b.x, b.y, r + 4 / z, 0, TAU);
+          ctx.arc(b.x, b.y, r + 5 / z, 0, TAU);
           ctx.stroke();
         }
       }
       if (b.shield > 0) {
-        const a = Math.min(1, b.shield) * (0.45 + 0.25 * Math.sin(t * 10));
-        ctx.strokeStyle = `rgba(150,225,255,${a})`;
-        ctx.lineWidth = 2.5 / z;
-        ctx.setLineDash([8 / z, 6 / z]);
-        ctx.lineDashOffset = -t * 30 / z;
+        const a = Math.min(1, b.shield);
+        ctx.fillStyle = `rgba(241,234,217,${0.06 * a})`;
+        ctx.strokeStyle = `rgba(241,234,217,${(0.35 + 0.2 * Math.sin(t * 8)) * a})`;
+        ctx.lineWidth = 2 / z;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, r + 8 / z, 0, TAU);
+        ctx.arc(b.x, b.y, r + 9 / z, 0, TAU);
+        ctx.fill();
         ctx.stroke();
-        ctx.setLineDash([]);
       }
       if (b.flash > 0) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, b.flash) * 0.55;
-        const s = r * 2.6;
-        ctx.drawImage(this.tex.glow(b.hue, 60, 85), b.x - s, b.y - s, s * 2, s * 2);
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgba(241,234,217,${Math.min(1, b.flash) * 0.35})`;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, r, 0, TAU);
+        ctx.fill();
       }
     }
   }
 
+  _dotted(z, color, width = 2.5) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width / z;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([0.01, 11 / z]);
+  }
+
   /*
-   * Around the player: its own gravity reach, and for each nearby predator the
-   * dashed edge of its pull plus a solid "point of no return" ring — inside it,
-   * normal thrust can no longer beat that body's gravity.
+   * Around the player: its own reach (dotted), and for each nearby predator the dotted
+   * edge of its pull plus a solid "point of no return" ring, inside which only a boost escapes.
    */
   _drawFocusFields(world, focus, z, t) {
     const ctx = this.ctx;
-    ctx.setLineDash([10 / z, 12 / z]);
-    ctx.lineWidth = 1.5 / z;
-    ctx.strokeStyle = hsl(focus.hue, 80, 75, 0.14);
-    ctx.beginPath();
-    ctx.arc(focus.x, focus.y, focus.gravRange(), 0, TAU);
-    ctx.stroke();
-
     const accel = maxSpeedFor(focus.mass) * CONFIG.DRAG;
+    const pulling = [];
     for (const b of world.bodies) {
       if (b === focus || !b.canEat(focus)) continue;
-      const range = b.gravRange();
       const d = Math.hypot(b.x - focus.x, b.y - focus.y);
-      if (d > range * 1.5 + focus.r) continue;
-      const near = clamp(1 - (d - range) / (range * 0.5), 0, 1);
-      ctx.setLineDash([10 / z, 12 / z]);
-      ctx.lineDashOffset = t * 20 / z;
-      ctx.strokeStyle = `rgba(255,96,120,${0.12 + 0.2 * near})`;
-      ctx.lineWidth = 1.5 / z;
+      const range = b.gravRange();
+      if (d < range + focus.r) pulling.push({ b, d, range });
+    }
+    pulling.sort((a, c) => a.d - c.d);
+    for (const { b, d, range } of pulling.slice(0, 2)) {
+      const near = clamp(1 - (d - b.r) / (range - b.r), 0, 1);
+      this._dotted(z, `rgba(255,84,104,${0.25 + 0.35 * near})`, 3);
       ctx.beginPath();
       ctx.arc(b.x, b.y, range, 0, TAU);
       ctx.stroke();
       const capture = Math.sqrt((CONFIG.G * b.gravMul() * b.mass) / accel);
       if (capture > b.r * 1.05) {
         ctx.setLineDash([]);
-        ctx.strokeStyle = `rgba(255,80,105,${0.25 + 0.35 * near})`;
-        ctx.lineWidth = 2 / z;
+        ctx.strokeStyle = `rgba(255,84,104,${0.4 + 0.4 * near})`;
+        ctx.lineWidth = 2.5 / z;
         ctx.beginPath();
         ctx.arc(b.x, b.y, capture, 0, TAU);
         ctx.stroke();
       }
     }
     ctx.setLineDash([]);
-    ctx.lineDashOffset = 0;
+    ctx.lineCap = 'butt';
   }
 
   _drawSurge(b, z, t) {
     const ctx = this.ctx, r = b.drawR, range = b.gravRange();
     const k = Math.min(1, (b.surgeT / CONFIG.SURGE_DURATION) * 3);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineWidth = Math.max(2 / z, r * 0.05);
+    ctx.lineWidth = Math.max(2.5 / z, r * 0.05);
     for (let i = 0; i < 4; i++) {
       const p = (t * 0.9 + i / 4) % 1;
-      ctx.strokeStyle = hsl(b.hue, 90, 72, 0.4 * p * k);
+      ctx.strokeStyle = tone(b.hue, 1, 'light', 0.5 * p * k);
       ctx.beginPath();
       ctx.arc(b.x, b.y, r + (range - r) * (1 - p), 0, TAU);
       ctx.stroke();
     }
-    ctx.globalCompositeOperation = 'source-over';
   }
 
   /* Draw any body at any size into any context (also used for menu icons). */
@@ -550,25 +475,22 @@ class Renderer {
 
   _drawPlanet(ctx, b, x, y, r, key) {
     const tex = this.tex.surface(key, b.hue, b.variant);
-    const baseAlpha = ctx.globalAlpha;
-    if (key === 'rocky' || key === 'ocean' || key === 'gas') {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = baseAlpha * (key === 'rocky' ? 0.3 : 0.45);
-      const s = r * 1.45;
-      ctx.drawImage(this.tex.glow(key === 'ocean' ? b.hue + 10 : b.hue, 80, 60), x - s, y - s, s * 2, s * 2);
-      ctx.globalAlpha = baseAlpha;
-      ctx.globalCompositeOperation = 'source-over';
-    }
     if (key === 'gas' && b.hasRings) this._drawRings(ctx, b, x, y, r, false);
-
+    if (key === 'ocean' || key === 'rocky') {
+      // a thin flat atmosphere band rather than a glow
+      ctx.strokeStyle = tone(b.hue, 1, 'light', key === 'ocean' ? 0.32 : 0.2);
+      ctx.lineWidth = r * 0.09;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.05, 0, TAU);
+      ctx.stroke();
+    }
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(b.tilt);
     ctx.beginPath();
     if (key === 'asteroid') {
       const n = b.shape.length;
       for (let i = 0; i < n; i++) {
-        const a = (i / n) * TAU, rr = r * b.shape[i];
+        const a = (i / n) * TAU + b.tilt, rr = r * b.shape[i];
         if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
         else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
       }
@@ -577,33 +499,27 @@ class Renderer {
       ctx.arc(0, 0, r, 0, TAU);
     }
     ctx.clip();
-    const W = r * 4;
+    ctx.rotate(b.tilt * 0.5);
+    const W = r * 4.4;
     const u = b.spin * W;
-    ctx.drawImage(tex, -r - u, -r, W, r * 2);
-    ctx.drawImage(tex, -r - u + W, -r, W, r * 2);
+    ctx.drawImage(tex, -r * 1.1 - u, -r * 1.1, W, r * 2.2);
+    ctx.drawImage(tex, -r * 1.1 - u + W, -r * 1.1, W, r * 2.2);
     if (key === 'ocean') {
       const cl = this.tex.clouds[b.variant % 3];
-      const u2 = ((b.spin * 1.7) % 1) * W;
-      ctx.drawImage(cl, -r - u2, -r, W, r * 2);
-      ctx.drawImage(cl, -r - u2 + W, -r, W, r * 2);
+      const u2 = ((b.spin * 1.6) % 1) * W;
+      ctx.drawImage(cl, -r * 1.1 - u2, -r * 1.1, W, r * 2.2);
+      ctx.drawImage(cl, -r * 1.1 - u2 + W, -r * 1.1, W, r * 2.2);
     }
-    ctx.rotate(-b.tilt);
-    ctx.drawImage(this.tex.shade, -r, -r, r * 2, r * 2);
+    ctx.rotate(-b.tilt * 0.5);
+    celShade(ctx, 0, 0, r);
     ctx.restore();
-
     if (key === 'gas' && b.hasRings) this._drawRings(ctx, b, x, y, r, true);
   }
 
-  _halfAnnulus(ctx, inner, outer, front) {
+  _halfArc(ctx, rad, front) {
     ctx.beginPath();
-    if (front) {
-      ctx.arc(0, 0, outer, 0, Math.PI);
-      ctx.arc(0, 0, inner, Math.PI, 0, true);
-    } else {
-      ctx.arc(0, 0, outer, Math.PI, TAU);
-      ctx.arc(0, 0, inner, TAU, Math.PI, true);
-    }
-    ctx.closePath();
+    if (front) ctx.arc(0, 0, rad, 0, Math.PI);
+    else ctx.arc(0, 0, rad, Math.PI, TAU);
   }
 
   _drawRings(ctx, b, x, y, r, front) {
@@ -611,36 +527,37 @@ class Renderer {
     ctx.translate(x, y);
     ctx.rotate(b.tilt * 0.8 + 0.3);
     ctx.scale(1, 0.3);
-    const inner = r * 1.3, outer = r * 2.15;
-    this._halfAnnulus(ctx, inner, outer, front);
-    const grd = ctx.createRadialGradient(0, 0, inner, 0, 0, outer);
-    grd.addColorStop(0, hsl(b.hue + 20, 30, 70, 0));
-    grd.addColorStop(0.1, hsl(b.hue + 20, 35, 74, 0.6));
-    grd.addColorStop(0.35, hsl(b.hue + 10, 30, 58, 0.35));
-    grd.addColorStop(0.45, hsl(b.hue, 20, 30, 0.06));
-    grd.addColorStop(0.55, hsl(b.hue + 15, 35, 70, 0.5));
-    grd.addColorStop(0.85, hsl(b.hue + 25, 30, 62, 0.25));
-    grd.addColorStop(1, hsl(b.hue + 25, 30, 60, 0));
-    ctx.fillStyle = grd;
-    ctx.fill();
+    const bands = [[1.42, 0.16, 'light', 0.85], [1.72, 0.26, 'base', 0.75], [2.02, 0.1, 'light', 0.6]];
+    for (const [m, wd, level, a] of bands) {
+      ctx.strokeStyle = tone(b.hue + 18, 0.5, level, a);
+      ctx.lineWidth = r * wd;
+      this._halfArc(ctx, r * m, front);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
   _drawStar(ctx, b, x, y, r, t) {
-    const fl = 1 + Math.sin(t * 2.7 + b.id) * 0.035 + Math.sin(t * 6.1 + b.id * 3) * 0.02;
-    const baseAlpha = ctx.globalAlpha;
-    const gl = this.tex.glow(b.hue, 95, 62);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = baseAlpha * 0.4;
-    let s = r * 3.2 * fl;
-    ctx.drawImage(gl, x - s, y - s, s * 2, s * 2);
-    ctx.globalAlpha = baseAlpha * 0.75;
-    s = r * 1.7 * fl;
-    ctx.drawImage(gl, x - s, y - s, s * 2, s * 2);
-    ctx.globalAlpha = baseAlpha;
-    ctx.globalCompositeOperation = 'source-over';
+    const h = starHue(b.hue), sat = h === 52 ? 45 : 95;
+    const pulse = 1 + Math.sin(t * 2.2 + b.id) * 0.025;
+    steppedHalo(ctx, x, y, r * pulse, hsl(h, sat, 72), 0.8);
+    // slowly turning flat rays
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(t * 0.08 + b.id);
+    ctx.fillStyle = hsl(h, sat, 80, 0.3);
+    const n = 12;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU, len = r * (i % 2 ? 1.32 : 1.5), wd = 0.09;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a - wd) * r, Math.sin(a - wd) * r);
+      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+      ctx.lineTo(Math.cos(a + wd) * r, Math.sin(a + wd) * r);
+      ctx.fill();
+    }
+    ctx.restore();
 
-    const tex = this.tex.surface('star', b.hue, b.variant);
+    const tex = this.tex.surface('star', h, b.variant);
     ctx.save();
     ctx.translate(x, y);
     ctx.beginPath();
@@ -649,7 +566,15 @@ class Renderer {
     const W = r * 4, u = b.spin * W;
     ctx.drawImage(tex, -r - u, -r, W, r * 2);
     ctx.drawImage(tex, -r - u + W, -r, W, r * 2);
-    ctx.drawImage(this.tex.starShade, -r, -r, r * 2, r * 2);
+    ctx.fillStyle = hsl(h, sat, 90, 0.45);
+    ctx.beginPath();
+    ctx.arc(LIGHT.x * r * 0.18, LIGHT.y * r * 0.18, r * 0.62, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = hsl(h, sat * 0.9, 58, 0.7);
+    ctx.lineWidth = r * 0.07;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.965, 0, TAU);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -657,89 +582,77 @@ class Renderer {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(b.tilt * 0.4);
-    ctx.scale(1, 0.28);
-    const inner = r * 1.02, outer = r * 2.5;
-    this._halfAnnulus(ctx, inner, outer, front);
-    const grd = ctx.createRadialGradient(0, 0, inner, 0, 0, outer);
-    grd.addColorStop(0, hsl(b.hue + 25, 100, 92, 0.95));
-    grd.addColorStop(0.15, hsl(b.hue + 10, 100, 66, 0.85));
-    grd.addColorStop(0.5, hsl(b.hue, 95, 48, 0.4));
-    grd.addColorStop(1, hsl(b.hue - 10, 90, 35, 0));
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = grd;
-    ctx.fill();
-    ctx.clip();
-    ctx.lineWidth = r * 0.06;
-    for (let k = 0; k < 6; k++) {
-      const rr = inner + (outer - inner) * (0.08 + k * 0.13);
-      const a0 = rot * (1.7 - k * 0.2) + k * 1.7;
-      ctx.strokeStyle = hsl(b.hue + 15, 100, 82, 0.25);
+    ctx.scale(1, 0.3);
+    const bands = [
+      [2.25, 0.16, tone(b.hue, 1, 'base', 0.55)],
+      [1.95, 0.3, 'hsla(14,88%,46%,0.85)'],
+      [1.6, 0.34, 'hsla(26,96%,58%,0.95)'],
+      [1.27, 0.26, 'hsla(42,100%,72%,1)'],
+    ];
+    for (const [m, wd, color] of bands) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = r * wd;
+      this._halfArc(ctx, r * m, front);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = COLORS.bone;
+    ctx.lineWidth = r * 0.07;
+    this._halfArc(ctx, r * 1.08, front);
+    ctx.stroke();
+    // dark gaps sliding round the disk show it spinning
+    ctx.strokeStyle = 'rgba(9,11,24,0.35)';
+    ctx.lineWidth = r * 0.05;
+    for (let k = 0; k < 3; k++) {
+      const rad = r * (1.45 + k * 0.28), a0 = rot * (1.6 - k * 0.3) + k * 2.1;
       ctx.beginPath();
-      ctx.arc(0, 0, rr, a0, a0 + 1.3);
+      ctx.arc(0, 0, rad, a0, a0 + 0.9);
       ctx.stroke();
     }
     ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
   }
 
   _drawBlackHole(ctx, b, x, y, r, t) {
     const rot = t * 0.9 + b.id;
-    const baseAlpha = ctx.globalAlpha;
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = baseAlpha * 0.35;
-    const s = r * 3.6;
-    ctx.drawImage(this.tex.glow(b.hue, 90, 55), x - s, y - s, s * 2, s * 2);
-    ctx.globalAlpha = baseAlpha;
-    ctx.globalCompositeOperation = 'source-over';
-
+    steppedHalo(ctx, x, y, r * 1.1, 'hsl(30,100%,66%)', 0.7);
     this._drawDisk(ctx, b, x, y, r, rot, false);
-
     // the far side of the disk, lensed up and over the hole
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(b.tilt * 0.4);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineWidth = r * 0.22;
-    ctx.strokeStyle = hsl(b.hue, 95, 60, 0.5);
+    ctx.strokeStyle = 'hsl(26,96%,58%)';
+    ctx.lineWidth = r * 0.18;
     ctx.beginPath();
-    ctx.ellipse(0, 0, r * 1.2, r * 1.14, 0, Math.PI * 1.02, Math.PI * 1.98);
+    ctx.ellipse(0, 0, r * 1.2, r * 1.15, 0, Math.PI * 1.04, Math.PI * 1.96);
     ctx.stroke();
+    ctx.strokeStyle = 'hsl(42,100%,74%)';
     ctx.lineWidth = r * 0.07;
-    ctx.strokeStyle = hsl(b.hue + 20, 100, 86, 0.7);
     ctx.stroke();
     ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
-
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.arc(x, y, r * 0.95, 0, TAU);
+    ctx.arc(x, y, r * 0.96, 0, TAU);
     ctx.fill();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = hsl(b.hue + 20, 100, 82, 0.9);
+    ctx.strokeStyle = COLORS.bone;
     ctx.lineWidth = Math.max(r * 0.035, 1);
     ctx.beginPath();
-    ctx.arc(x, y, r * 0.97, 0, TAU);
+    ctx.arc(x, y, r * 0.975, 0, TAU);
     ctx.stroke();
-    ctx.globalCompositeOperation = 'source-over';
-
     this._drawDisk(ctx, b, x, y, r, rot, true);
   }
 
   /* ---------- effects ---------- */
 
-  _drawParticles(world, view) {
-    const ctx = this.ctx, ps = world.fx.particles;
-    ctx.globalCompositeOperation = 'lighter';
+  _drawParticles(world, view, z) {
+    const ctx = this.ctx, ps = world.fx.particles, minS = 1.6 / z;
     for (let i = 0; i < ps.length; i++) {
       const p = ps[i];
       if (p.x < view.l || p.x > view.r || p.y < view.t || p.y > view.b) continue;
       const a = p.life / p.max;
-      ctx.globalAlpha = a;
-      const s = p.size * (0.5 + a * 0.8);
-      ctx.drawImage(this.tex.glow(p.hue, 90, p.light), p.x - s, p.y - s, s * 2, s * 2);
+      ctx.globalAlpha = Math.min(1, a * 1.4);
+      const s = Math.max(p.size * (0.35 + a * 0.65), minS);
+      ctx.drawImage(this.tex.dot(p.hue, Math.min(86, p.light + 4)), p.x - s, p.y - s, s * 2, s * 2);
     }
     ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
   }
 
   _drawSupernovae(world, z, t) {
@@ -747,44 +660,42 @@ class Renderer {
     for (const sn of world.supernovae) {
       const k = 1 - sn.t / sn.dur;
       const pulse = 0.5 + 0.5 * Math.sin(t * (6 + k * 20));
-      ctx.globalCompositeOperation = 'lighter';
-      const s = (70 + k * 240) * (0.85 + pulse * 0.3);
-      ctx.globalAlpha = 0.55 + 0.45 * k;
-      ctx.drawImage(this.tex.glow(sn.hue, 95, 65), sn.x - s, sn.y - s, s * 2, s * 2);
-      ctx.globalAlpha = 1;
-      const c = s * 0.35;
-      ctx.drawImage(this.tex.glow(sn.hue, 30, 90), sn.x - c, sn.y - c, c * 2, c * 2);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.setLineDash([18 / z, 14 / z]);
-      ctx.strokeStyle = `rgba(255,96,120,${0.3 + 0.45 * pulse})`;
-      ctx.lineWidth = 3 / z;
+      const r = (34 + k * 90) * (0.9 + pulse * 0.2);
+      steppedHalo(ctx, sn.x, sn.y, r, hsl(sn.hue, 95, 70), 1 + k);
+      ctx.fillStyle = hsl(sn.hue, 100, 72);
+      ctx.beginPath();
+      ctx.arc(sn.x, sn.y, r * 0.55, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = COLORS.bone;
+      ctx.beginPath();
+      ctx.arc(sn.x, sn.y, r * 0.3, 0, TAU);
+      ctx.fill();
+      this._dotted(z, `rgba(255,84,104,${0.45 + 0.45 * pulse})`, 4);
       ctx.beginPath();
       ctx.arc(sn.x, sn.y, CONFIG.SUPERNOVA_CORE, 0, TAU);
       ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.strokeStyle = 'rgba(255,210,170,0.10)';
-      ctx.lineWidth = 2 / z;
+      this._dotted(z, 'rgba(241,234,217,0.16)', 2.5);
       ctx.beginPath();
       ctx.arc(sn.x, sn.y, CONFIG.SUPERNOVA_BLAST, 0, TAU);
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineCap = 'butt';
     }
   }
 
   _drawShockwaves(world, z) {
     const ctx = this.ctx;
-    ctx.globalCompositeOperation = 'lighter';
     for (const sw of world.fx.shockwaves) {
       const k = sw.r / sw.max;
-      ctx.strokeStyle = hsl(sw.hue, 90, 70, 0.35 * (1 - k));
+      ctx.strokeStyle = hsl(sw.hue, 90, 72, 0.22 * (1 - k));
       ctx.lineWidth = 70 * (1 - k) + 8;
       ctx.beginPath();
       ctx.arc(sw.x, sw.y, sw.r, 0, TAU);
       ctx.stroke();
-      ctx.strokeStyle = `rgba(255,250,240,${0.8 * (1 - k)})`;
+      ctx.strokeStyle = `rgba(241,234,217,${0.85 * (1 - k)})`;
       ctx.lineWidth = 3 / z;
       ctx.stroke();
     }
-    ctx.globalCompositeOperation = 'source-over';
   }
 
   /* ---------- screen-space overlays ---------- */
@@ -793,46 +704,34 @@ class Renderer {
     const ctx = this.ctx;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineJoin = 'round';
     for (const b of this._sorted) {
       const sr = b.drawR * z;
       if (sr < 5) continue;
       const p = toScreen(b.x, b.y);
-      const fs = clamp(sr * 0.3, 11, 19);
-      let color = '#e9ecf8';
-      if (b === focus) color = '#ffc98a';
+      const fs = clamp(sr * 0.3, 11, 18);
+      let color = COLORS.bone;
+      if (b === focus) color = COLORS.ember;
       else if (focus && focus.alive) {
-        if (b.canEat(focus)) color = '#ff8d9c';
-        else if (focus.canEat(b)) color = '#80f0c8';
+        if (b.canEat(focus)) color = COLORS.threat;
+        else if (focus.canEat(b)) color = COLORS.prey;
       }
-      const extra = TIERS[b.tier].key === 'blackhole' ? sr * 0.45 : TIERS[b.tier].key === 'gas' && b.hasRings ? sr * 0.25 : 0;
-      const ly = p.y + sr + extra + fs * 0.9 + 2;
-      ctx.font = `700 ${fs}px Manrope, system-ui, sans-serif`;
-      ctx.lineWidth = 3.5;
-      ctx.strokeStyle = 'rgba(3,4,12,0.8)';
-      ctx.strokeText(b.name, p.x, ly);
-      ctx.fillStyle = color;
-      ctx.fillText(b.name, p.x, ly);
-      const ms = Math.max(10, fs * 0.72);
-      ctx.font = `500 ${ms}px "JetBrains Mono", ui-monospace, monospace`;
-      const my = ly + fs * 0.5 + ms * 0.7;
-      ctx.strokeText(formatMass(b.mass), p.x, my);
-      ctx.fillStyle = 'rgba(214,220,245,0.7)';
-      ctx.fillText(formatMass(b.mass), p.x, my);
+      const key = TIERS[b.tier].key;
+      const extra = key === 'blackhole' ? sr * 0.45 : key === 'gas' && b.hasRings ? sr * 0.25 : key === 'star' ? sr * 0.4 : 0;
+      const ly = p.y + sr + extra + fs * 0.9 + 4;
+      ctx.font = `800 ${fs}px Manrope, system-ui, sans-serif`;
+      this._shadowText(b.name, p.x, ly, color);
+      const ms = Math.max(10, fs * 0.78);
+      ctx.font = `700 ${ms}px Manrope, system-ui, sans-serif`;
+      this._shadowText(formatMass(b.mass), p.x, ly + fs * 0.55 + ms * 0.62, 'rgba(241,234,217,0.62)', 1.5);
     }
 
-    ctx.font = '600 11px "JetBrains Mono", ui-monospace, monospace';
+    ctx.font = '700 11px Manrope, system-ui, sans-serif';
     for (const wh of world.wormholes) {
       const p = toScreen(wh.x, wh.y);
       if (p.x < -50 || p.x > this.w + 50 || p.y < -50 || p.y > this.h + 50) continue;
       const sealed = focus && focus.mass > CONFIG.WORMHOLE_MAX_MASS;
-      const y = p.y + wh.r * z + 16;
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(3,4,12,0.8)';
-      const txt = sealed ? 'WORMHOLE · SEALED' : `WORMHOLE · ≤${CONFIG.WORMHOLE_MAX_MASS}`;
-      ctx.strokeText(txt, p.x, y);
-      ctx.fillStyle = hsl(wh.hue, 80, 78, sealed ? 0.4 : 0.85);
-      ctx.fillText(txt, p.x, y);
+      const txt = sealed ? 'Wormhole · sealed' : `Wormhole · up to ${CONFIG.WORMHOLE_MAX_MASS}`;
+      this._shadowText(txt, p.x, p.y + wh.r * 1.5 * z + 16, tone(wh.hue, 1, 'light', sealed ? 0.45 : 0.95), 1.5);
     }
   }
 
@@ -842,14 +741,9 @@ class Renderer {
     ctx.textBaseline = 'middle';
     for (const tx of world.fx.texts) {
       const p = toScreen(tx.x, tx.y);
-      const a = Math.min(1, (tx.life / tx.max) * 2);
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = Math.min(1, (tx.life / tx.max) * 2);
       ctx.font = `800 ${tx.size}px Unbounded, Manrope, system-ui, sans-serif`;
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(3,4,12,0.85)';
-      ctx.strokeText(tx.text, p.x, p.y - tx.rise);
-      ctx.fillStyle = tx.color;
-      ctx.fillText(tx.text, p.x, p.y - tx.rise);
+      this._shadowText(tx.text, p.x, p.y - tx.rise, tx.color, 3);
     }
     ctx.globalAlpha = 1;
   }
@@ -859,18 +753,15 @@ class Renderer {
     for (const sn of world.supernovae) {
       const p = toScreen(sn.x, sn.y);
       const secs = Math.ceil(sn.t);
-      const pulse = 0.6 + 0.4 * Math.sin(t * 10);
       const inside = p.x > 30 && p.x < w - 30 && p.y > 30 && p.y < h - 30;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (inside) {
-        const ly = Math.max(24, p.y - CONFIG.SUPERNOVA_CORE * z - 18);
+        // Below the danger ring, so it never collides with the warning banner at the top
+        const below = p.y + CONFIG.SUPERNOVA_CORE * z + 24;
+        const ly = below < h - 120 ? below : Math.max(24, p.y - CONFIG.SUPERNOVA_CORE * z - 20);
         ctx.font = '800 15px Unbounded, Manrope, system-ui, sans-serif';
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'rgba(3,4,12,0.85)';
-        ctx.strokeText(`SUPERNOVA ${secs}`, p.x, ly);
-        ctx.fillStyle = `rgba(255,190,140,${pulse})`;
-        ctx.fillText(`SUPERNOVA ${secs}`, p.x, ly);
+        this._shadowText(`Supernova in ${secs}`, p.x, ly, COLORS.threat);
         continue;
       }
       const cx = w / 2, cy = h / 2;
@@ -882,7 +773,13 @@ class Renderer {
       ctx.save();
       ctx.translate(ex, ey);
       ctx.rotate(ang);
-      ctx.fillStyle = `rgba(255,150,110,${pulse})`;
+      ctx.fillStyle = 'rgba(9,11,24,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(18, 3);
+      ctx.lineTo(-4, -7);
+      ctx.lineTo(-4, 13);
+      ctx.fill();
+      ctx.fillStyle = COLORS.threat;
       ctx.beginPath();
       ctx.moveTo(16, 0);
       ctx.lineTo(-6, -10);
@@ -891,17 +788,12 @@ class Renderer {
       ctx.fill();
       ctx.restore();
       ctx.font = '800 13px Unbounded, Manrope, system-ui, sans-serif';
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(3,4,12,0.85)';
-      const lx = ex - sx * 30, ly = ey - sy * 26;
-      ctx.strokeText(String(secs), lx, ly);
-      ctx.fillStyle = '#ffd2b0';
-      ctx.fillText(String(secs), lx, ly);
+      this._shadowText(String(secs), ex - sx * 30, ey - sy * 26, COLORS.threat);
     }
   }
 
-  /* The vignettes are CSS overlays (cheap for the compositor); only the danger opacity changes. */
-  _drawVignette(danger, t) {
+  /* The danger vignette is a CSS overlay; only its opacity changes here. */
+  _drawDanger(danger, t) {
     if (!this.dangerEl) return;
     const a = danger > 0.08 ? clamp(danger, 0, 1.2) * (0.75 + 0.25 * Math.sin(t * 9)) : 0;
     const q = Math.round(a * 50) / 50;
@@ -911,7 +803,7 @@ class Renderer {
     }
   }
 
-  /* Small standalone render of a tier, for the menu's evolution ladder. */
+  /* Small standalone render of a tier, for the menu. */
   drawIcon(canvas, tier, hue, t) {
     const g = canvas.getContext('2d');
     const size = canvas.width;
@@ -927,7 +819,7 @@ class Renderer {
     fake.hue = hue;
     fake.spin = (fake.spin + 0.0009) % 1;
     const key = TIERS[tier].key;
-    const r = size * (key === 'blackhole' ? 0.2 : key === 'gas' ? 0.22 : key === 'star' ? 0.24 : 0.34);
+    const r = size * (key === 'blackhole' ? 0.19 : key === 'gas' ? 0.21 : key === 'star' ? 0.28 : 0.36);
     this.drawBody(g, fake, size / 2, size / 2, r, t);
   }
 }

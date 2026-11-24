@@ -84,22 +84,34 @@ const FOOD_COMET = 2;
 const FOOD_DEBRIS = 3;
 const FOOD_REMNANT = 4;
 
+/* The art direction's fixed colours. css/style.css mirrors these as custom properties. */
+const COLORS = {
+  ink: '#090b18',        // the void
+  plate: '#141833',      // UI plates
+  bone: '#f1ead9',       // text, stardust, highlights
+  boneDim: '#a3a1b8',
+  ember: '#ff7849',      // the brand accent
+  threat: '#ff5468',     // can eat you
+  prey: '#6fe0a6',       // you can eat it
+  fabric: 'rgba(98,114,210,0.22)', // the spacetime grid
+};
+
+/* Stardust: mostly bone, some sand, a little ember. [hue, saturation, lightness] */
 const DUST_COLORS = [
-  [195, 90, 75],
-  [42, 95, 70],
-  [320, 85, 76],
-  [255, 85, 78],
-  [150, 75, 70],
+  [44, 45, 90],
+  [40, 72, 70],
+  [18, 95, 64],
 ];
 
-/* Hues offered on the menu, in display order. */
-const PLAYER_HUES = [205, 28, 342, 152, 268, 52];
+/* Every body colour in the game comes from these eight hues (players and bots alike). */
+const BODY_HUES = [200, 164, 88, 36, 14, 334, 276, 232];
+const PLAYER_HUES = BODY_HUES;
 
+/* Rival bodies are named after real moons and minor planets. */
 const BOT_NAMES = [
-  'Kepler', 'Vega', 'Rigel', 'Io', 'Europa', 'Titan', 'Callisto', 'Ceres', 'Halley', 'Juno',
-  'Lyra', 'Orion', 'Sirius', 'Pulsar', 'Quasar', 'Zenith', 'Andromeda', 'Proxima', 'Altair',
-  'Deneb', 'Ganymede', 'Hyperion', 'Mimas', 'Oberon', 'Phobos', 'Rhea', 'Triton', 'Vesta',
-  'Pallas', 'Eris', 'Sedna', 'Haumea', 'Charon', 'Nyx', 'Antares', 'Capella', 'Arcturus',
-  'spacecadet', 'dark_matter', 'orbit.exe', 'moonwalker', 'zero-g', 'xX_Comet_Xx', 'nebulous',
-  'tidal_lock', 'redshift', 'escape_velocity', 'lagrange', 'roche', 'ion_drive', 'stardust99',
+  'Io', 'Europa', 'Ganymede', 'Callisto', 'Titan', 'Rhea', 'Iapetus', 'Dione', 'Tethys', 'Enceladus',
+  'Mimas', 'Hyperion', 'Phoebe', 'Miranda', 'Ariel', 'Umbriel', 'Titania', 'Oberon', 'Triton', 'Nereid',
+  'Proteus', 'Charon', 'Nix', 'Hydra', 'Kerberos', 'Styx', 'Phobos', 'Deimos', 'Ceres', 'Vesta',
+  'Pallas', 'Hygiea', 'Eris', 'Sedna', 'Haumea', 'Makemake', 'Quaoar', 'Orcus', 'Varuna', 'Ixion',
+  'Salacia', 'Dysnomia', 'Arrokoth', 'Larissa', 'Galatea', 'Amalthea', 'Himalia', 'Pandora',
 ];

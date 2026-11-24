@@ -141,10 +141,19 @@ class Sfx {
   play(name, vol = 1) {
     if (!this.ctx || this.muted || vol <= 0.02) return;
     switch (name) {
-      case 'dust':
+      case 'dust': {
         if (!this._throttle(name, 45)) return;
-        this._tone('sine', rand(700, 1100), rand(1200, 1600), 0.07, 0.05 * vol);
+        // Chained pickups climb a pentatonic scale, so a good sweep plays a little run
+        const now = performance.now();
+        this.chain = now - (this.lastChain || 0) < 450 ? Math.min((this.chain || 0) + 1, 14) : 0;
+        this.lastChain = now;
+        const scale = [0, 2, 4, 7, 9];
+        const step = this.chain;
+        const semis = scale[step % 5] + 12 * Math.floor(step / 5);
+        const f = 523.25 * Math.pow(2, semis / 12);
+        this._tone('triangle', f, f * 1.005, 0.12, 0.06 * vol);
         break;
+      }
       case 'rock':
         if (!this._throttle(name, 60)) return;
         this._tone('triangle', 320, 140, 0.14, 0.12 * vol);

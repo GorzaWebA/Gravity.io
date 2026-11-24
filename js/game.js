@@ -189,7 +189,7 @@ class Game {
         ? 'Drag anywhere to steer.'
         : 'Move the mouse to steer. Hold Space to boost, press E for a gravity surge.', 6);
     }
-    this.hud.banner('You are an', 'Asteroid', TIERS[0].perk, '');
+    this.hud.banner('You start as an', 'Asteroid', TIERS[0].perk, 'tier');
     this.hud.feed(`<b>${escapeHtml(name)}</b> entered the system.`, 'you');
     this.canvas.focus?.();
   }
@@ -236,7 +236,8 @@ class Game {
 
     const s = p.stats;
     const time = this.world.time - s.born;
-    const record = !this.best || s.peakMass > this.best.mass;
+    const firstRun = !this.best;
+    const record = firstRun || s.peakMass > this.best.mass;
     if (record) {
       this.best = { mass: Math.round(s.peakMass), tier: s.peakTier, time };
       storageSet('gravity.best', this.best);
@@ -244,12 +245,16 @@ class Game {
     this.deathInfo = {
       killer: killer.name, killerTier: TIERS[killer.tier].name, killerMass: killer.mass,
       time, peakMass: s.peakMass, peakTier: TIERS[s.peakTier].name, bodies: s.bodies,
-      dust: s.dust, comets: s.comets, bestRank: s.bestRank, record,
+      dust: s.dust, comets: s.comets, bestRank: s.bestRank, record: record && !firstRun,
     };
     this.hud.feed(`<b>${escapeHtml(killer.name)}</b> absorbed you.`, 'warn');
   }
 
   onKey(code) {
+    if (this.hud.howtoOpen) {
+      if (code === 'Escape' || code === 'Enter') this.hud.setHowto(false);
+      return;
+    }
     if (code === 'KeyM') this.toggleMute();
     else if (code === 'KeyF') this.toggleFullscreen();
     else if (code === 'Escape' || code === 'KeyP') {
@@ -296,6 +301,7 @@ class Game {
     this.renderer.render(this.world, this.cam, {
       time: this.world.time,
       focus: this.state === 'menu' ? null : p,
+      labels: this.state !== 'menu',
       danger: this.danger,
       flash: this.flash,
     });
@@ -408,7 +414,7 @@ class Game {
             this.sfx.play('absorb', 1);
             this.buzz(25);
             this.cam.shake += 5 + Math.min(12, e.gain / 25);
-            w.floatText(p.x, p.y - p.r, `+${formatMass(e.gain)}`, '#80f0c8', 22);
+            w.floatText(p.x, p.y - p.r, `+${formatMass(e.gain)}`, COLORS.prey, 22);
             this.hud.feed(`You absorbed <b>${esc(e.victim.name)}</b> <span class="gain">+${formatMass(e.gain)}</span>`, 'you');
           } else {
             const vol = this._vol(e.eater.x, e.eater.y);
@@ -422,7 +428,7 @@ class Game {
         case 'eat':
           if (e.food.type === FOOD_ROCK) {
             this.sfx.play('rock');
-            w.floatText(e.food.x, e.food.y, `+${Math.round(e.food.mass)}`, '#ffd9b0', 13);
+            w.floatText(e.food.x, e.food.y, `+${Math.round(e.food.mass)}`, COLORS.bone, 13);
           } else {
             this.sfx.play('dust');
           }
@@ -431,7 +437,7 @@ class Game {
           const what = e.food.type === FOOD_COMET ? 'a comet' : 'the pulsar';
           if (e.body === p) {
             this.sfx.play('bigEat');
-            w.floatText(p.x, p.y - p.r, `+${Math.round(e.food.mass)}`, '#9cd8ff', 20);
+            w.floatText(p.x, p.y - p.r, `+${Math.round(e.food.mass)}`, COLORS.bone, 20);
             this.hud.feed(`You caught ${what} <span class="gain">+${Math.round(e.food.mass)}</span>`, 'big');
           } else if (e.food.type === FOOD_REMNANT) {
             this.hud.feed(`<b>${esc(e.body.name)}</b> claimed the pulsar.`, 'big');
@@ -444,12 +450,12 @@ class Game {
             if (e.to > e.from) {
               this.sfx.play('tierUp');
               this.buzz([20, 40, 20]);
-              this.hud.banner('Evolved into', tier.name, tier.perk);
+              this.hud.banner('You became', `${/^[aeiou]/i.test(tier.name) ? 'an' : 'a'} ${tier.name}`, tier.perk, 'tier');
               this.hud.feed(`You became a <b>${tier.name}</b>.`, 'you');
               this.flash = Math.max(this.flash, 0.18);
             } else {
               this.sfx.play('tierDown');
-              this.hud.banner('Lost mass', tier.name, 'Eat to climb back up.', 'down');
+              this.hud.banner('You shrank back to', tier.name, 'Eat to climb back up.', 'down');
             }
           } else if (e.to > e.from && e.to >= 5) {
             const verb = tier.key === 'blackhole' ? 'collapsed into a' : 'ignited into a';
@@ -470,7 +476,7 @@ class Game {
           break;
         case 'supernovaWarning':
           this.sfx.play('warn');
-          this.hud.banner('Warning', 'Supernova', 'A star is collapsing. Stay outside the red ring.', 'warn');
+          this.hud.banner('A star is collapsing', 'Supernova', 'Get outside the red ring.', 'warn');
           this.hud.feed('A star is about to go supernova.', 'warn');
           break;
         case 'supernova': {
@@ -482,7 +488,7 @@ class Game {
         }
         case 'supernovaHit':
           if (e.body === p) {
-            w.floatText(p.x, p.y - p.r, `−${formatMass(e.loss)}`, '#ff8d9c', 22);
+            w.floatText(p.x, p.y - p.r, `−${formatMass(e.loss)}`, COLORS.threat, 22);
             this.buzz(70);
             this.hud.feed(`Caught in the blast <span class="loss">−${formatMass(e.loss)}</span>`, 'warn');
           }

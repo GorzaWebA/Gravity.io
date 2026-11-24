@@ -96,7 +96,7 @@ function makeFood(type, x, y, opts = {}) {
     case FOOD_DUST:
       f.mass = 1;
       f.r = rand(2.6, 3.8);
-      f.color = randInt(0, DUST_COLORS.length - 1);
+      f.color = Math.random() < 0.74 ? 0 : Math.random() < 0.6 ? 1 : 2;
       f.drag = 2.5;
       f.vx = rand(-6, 6);
       f.vy = rand(-6, 6);

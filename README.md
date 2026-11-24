@@ -1,155 +1,96 @@
-<div align="center">
+<a href="https://gorzaweba.github.io/Gravity.io/"><img src="assets/hero.jpg" alt="Gravity.io: a ringed gas giant drifts past a nebula while a heavier star closes in" width="100%"></a>
 
-<a href="https://gorzaweba.github.io/Gravity.io/"><img src="assets/hero.jpg" alt="Gravity.io gameplay: a ringed gas giant drifts past a nebula while a heavier star closes in" width="100%"></a>
+# Gravity.io
 
-<h1>Gravity.io</h1>
+**Eat what's smaller. Run from what's bigger. Become a black hole.**
 
-<p><b>Start as a stray rock. Absorb everything lighter than you. Become a black hole.</b></p>
+**[Play it in your browser →](https://gorzaweba.github.io/Gravity.io/)**
 
-<a href="https://gorzaweba.github.io/Gravity.io/"><img src="https://img.shields.io/badge/%E2%96%B6%20Play%20now-in%20your%20browser-ffb35c?style=for-the-badge&labelColor=0b0f22" alt="Play now in your browser"></a>
+You start as a rock the size of a pebble. Everything with mass pulls on everything lighter than itself, so the space around you is a vacuum for stardust and smaller bodies, and the space around anything heavier is a trap. Grow through seven forms, and keep out of the wells of the things that want to eat you.
 
-<br><br>
+It runs on phones, tablets and desktops, with no install, no account and no build step.
 
-<img src="https://img.shields.io/badge/HTML5-canvas-e34f26?style=flat-square&labelColor=0b0f22&logo=html5&logoColor=white" alt="HTML5 canvas">
-<img src="https://img.shields.io/badge/JavaScript-vanilla-f7df1e?style=flat-square&labelColor=0b0f22&logo=javascript&logoColor=f7df1e" alt="Vanilla JavaScript">
-<img src="https://img.shields.io/badge/dependencies-none-80f0c8?style=flat-square&labelColor=0b0f22" alt="No dependencies">
-<img src="https://img.shields.io/badge/plays%20on-desktop%20%26%20mobile-9cb8ff?style=flat-square&labelColor=0b0f22" alt="Plays on desktop and mobile">
-
-</div>
-
-<br>
-
-You are a small asteroid in a crowded star system. Everything with mass pulls on everything lighter than itself, so the space around every heavier body is a trap, and the space around you is a vacuum for stardust, rocks and smaller rivals. Feed, grow, change form, and keep out of the wells of anything bigger than you.
-
-<div align="center">
-
-### [▶ Play Gravity.io](https://gorzaweba.github.io/Gravity.io/)
-
-</div>
-
-## Grow through seven forms
-
-<img src="assets/forms.png" alt="The seven forms: Asteroid, Moon, Rocky Planet, Ocean World, Gas Giant, Star, Black Hole" width="100%">
-
-Each form looks different and pulls harder than the one before it.
+<img src="assets/forms.png" alt="The seven forms in order: Asteroid, Moon, Rocky Planet, Ocean World, Gas Giant, Star, Black Hole" width="100%">
 
 | Form | Reached at | What changes |
 | :--- | ---: | :--- |
-| 🪨 Asteroid | start | You absorb stardust and smaller rocks |
-| 🌑 Moon | 35 | Heavy enough to absorb comets |
-| 🔴 Rocky Planet | 100 | Gravity +8% |
-| 🌊 Ocean World | 250 | Gravity +15% |
-| 🪐 Gas Giant | 600 | Gravity +25%, wider pull |
-| ⭐ Star | 1,400 | Gravity +40% |
-| 🕳️ Black Hole | 3,000 | Gravity +80%, but Hawking radiation drains you faster |
+| Asteroid | start | You absorb stardust and smaller rocks |
+| Moon | 35 | Heavy enough to swallow comets |
+| Rocky Planet | 100 | Gravity +8% |
+| Ocean World | 250 | Gravity +15% |
+| Gas Giant | 600 | Gravity +25%, wider pull |
+| Star | 1,400 | Gravity +40% |
+| Black Hole | 3,000 | Gravity +80%, but Hawking radiation eats your mass faster |
 
 ## Controls
 
-| | Desktop | Touch |
+| | Desktop | Phone or tablet |
 | :--- | :--- | :--- |
-| **Steer** | Mouse (farther cursor = faster) or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys | Drag anywhere. A joystick appears under your thumb |
-| **Boost** | Hold <kbd>Space</kbd> or left click. Faster, but burns mass | Hold the Boost button |
-| **Gravity surge** | <kbd>E</kbd>, <kbd>Shift</kbd> or right click. Stronger, longer pull for 2.6 s, recharges in 14 s | Tap the Surge button |
-| **Pause** | <kbd>Esc</kbd> or <kbd>P</kbd> | Pause button |
-| **Sound** | <kbd>M</kbd> | Speaker button |
-| **Full screen** | <kbd>F</kbd> or the full-screen button | Full-screen button, or Add to Home Screen |
+| Steer | Mouse (the farther the cursor, the faster), or WASD / arrow keys | Drag anywhere. A stick appears under your thumb |
+| Boost | Hold Space or left click. Faster, but it burns mass | Hold the Boost button |
+| Gravity surge | E, Shift or right click. Pull 2.2× harder for 2.6 s, then 14 s to recharge | Tap the Surge button |
+| Pause, sound, full screen | Esc, M, F | Buttons at the top |
 
-### On a phone or tablet
+On a phone, **Add to Home Screen** turns it into a full-screen app with its own icon.
 
-- **Portrait or landscape.** The HUD rearranges itself for tall, wide and very small screens.
-- **Floating joystick.** Wherever your thumb lands becomes the stick, so your thumb never covers your own planet. A second finger works the Boost and Surge buttons.
-- **Install it.** In the browser menu choose **Add to Home Screen**. Gravity.io then opens full screen with its own icon, like an app.
-- **Made for small devices.** The screen stays awake while you play, you feel absorptions on phones that support vibration, and the game lowers its resolution automatically if frames start dropping.
-
-## Survive the system
+## Staying alive
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/danger.jpg" alt="A small moon at the edge of a black hole's point-of-no-return ring"></td>
-    <td width="50%"><img src="assets/supernova.jpg" alt="A supernova warning with its red danger ring and countdown"></td>
+    <td width="50%"><img src="assets/danger.jpg" alt="A small moon just outside a black hole's solid red ring"></td>
+    <td width="50%"><img src="assets/supernova.jpg" alt="A collapsing star with its dotted red danger ring and countdown"></td>
   </tr>
   <tr>
-    <td><b>Point of no return.</b> Every predator gets two red rings. The dashed one is where its gravity starts. Inside the solid one it out-pulls your engine, and only a boost gets you out.</td>
-    <td><b>Supernovae.</b> Every 60 to 95 seconds a star collapses. You get 5 seconds of warning. Anything inside the red ring loses 18% of its mass, and the blast leaves stardust and a pulsar worth 45.</td>
+    <td><b>The red rings.</b> When something heavy is pulling on you, two rings show up around it. The dotted one is where its pull starts. Inside the solid one, its pull is stronger than your engine, and only a boost gets you out.</td>
+    <td><b>Supernovae.</b> Every 60 to 95 seconds a star starts pulsing. You have five seconds to get outside its red ring. Anything caught inside loses 18% of its mass. Afterwards there is stardust everywhere and a pulsar worth 45.</td>
   </tr>
 </table>
 
-| | |
-| :---: | :--- |
-| 🌌 | **Spacetime grid.** The background grid sags toward every mass, so you can see a gravity well before you are in it. |
-| 🍽️ | **Absorbing.** You can absorb anything at least 20% lighter than you. Closer in size, you bounce off each other and chip off debris. Green names are prey, red names are predators. |
-| 🪨 | **Asteroid belt.** A ring of rocks worth 4 to 8 mass each. The best place to feed early on. |
-| 🌫️ | **Nebulae.** Bots can't see you inside one unless they are close, but nebulae slow you down. |
-| 🌀 | **Wormholes.** Two linked pairs that fling bodies up to 400 mass across the system. Bots use them to escape, and so can you. |
-| ☄️ | **Comets.** Fast, worth 18 to 30 mass, and their paths bend around heavy bodies. |
-| ⏳ | **Decay.** Above 150 mass you slowly lose mass, faster the bigger you are. Giants have to keep eating to stay giants. |
-| 🤖 | **20 rivals.** Bots with their own aggression and caution. They flee, boost, hunt what they can catch, use gravity surge, and dive into wormholes when chased. |
-| 🏆 | **Records.** A leaderboard, a minimap, an event feed, and your best run saved in your browser. |
-| 🔊 | **Sound.** Every effect is synthesized live with WebAudio. The game ships no audio files. |
+- **Food and threats are colour-coded.** Green names are bodies you can eat (anything 20% lighter than you). Red names can eat you. Bodies close to your size bounce off you and chip.
+- **The grid is the gravity.** The background grid dents around every mass, so you can see a well before you're in it.
+- **Nebulae** hide you from hunters unless they're close, but they slow you down.
+- **Wormholes** throw anything up to 400 mass across the map. The bots know this and use them to escape.
+- **Comets** are fast, worth up to 30, and their paths bend around heavy bodies.
+- **Big things decay.** Above 150 mass you slowly shed mass, faster the bigger you get, so giants have to keep eating to stay giants.
+
+You share the system with 20 bots named after real moons and dwarf planets. Each has its own nerve and appetite: they flee, hunt what they can catch, give up on what they can't, and dive into wormholes when chased.
 
 ## Run it yourself
 
-The game is a static page with no build step. Either:
-
-- **Open `index.html`** in any modern browser. It works straight from the file system.
-- **Serve the folder** with any static server, for example:
-
-  ```sh
-  python3 -m http.server 8000   # then open http://localhost:8000
-  ```
-
-### Host it on GitHub Pages
-
-1. In the repository, open **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-3. Pick the branch that holds the game and the **/ (root)** folder, then **Save**.
-
-A minute later the game is live at `https://<your-username>.github.io/<repository-name>/`. The empty `.nojekyll` file tells Pages to serve the files as they are.
-
-## Under the hood
-
-<details>
-<summary><b>Project layout</b></summary>
-
-```
-index.html        page, HUD and menu markup
-css/style.css     all styling
-js/config.js      every tuning constant, the evolution ladder, bot names
-js/util.js        math, RNG and formatting helpers
-js/entities.js    Body (players and bots), food, spatial grid
-js/world.js       the simulation: gravity, absorption, collisions, food, events
-js/ai.js          bot brains
-js/textures.js    procedural planet, star and sprite textures
-js/renderer.js    canvas rendering
-js/audio.js       synthesized sound effects
-js/input.js       mouse, keyboard, touch joystick
-js/hud.js         stats, leaderboard, minimap, feed, menu and death screens
-js/game.js        state machine, loop, camera, event handling
-tools/simulate.js headless balance simulation
-manifest.webmanifest  install-to-home-screen settings
-assets/           icons, README and link-preview images
-```
-
-</details>
-
-<details>
-<summary><b>How the gravity works</b></summary>
-
-Every body pulls lighter bodies with an inverse-square force. The pull fades out at 4.5 radii and never reaches further than 2,300 units. Each form multiplies the strength and reach. Gravity also vacuums stardust toward you, so bigger bodies feed faster.
-
-The "point of no return" ring is the distance where a predator's pull equals your top thrust: `sqrt(G × strength × mass ÷ your thrust)`. Boosting nearly doubles your thrust, which is why a boost can still save you inside it.
-
-</details>
-
-<details>
-<summary><b>Tuning the balance</b></summary>
-
-Every number that affects balance is in `js/config.js`. The simulation in `js/world.js` does not touch the DOM, so it also runs without a browser:
+Open `index.html` in a browser. That's it. To serve it instead:
 
 ```sh
-node tools/simulate.js 600   # 10 minutes of bot-only play
+python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
-It prints the leaderboard every 30 seconds and counts every event at the end. Use it to check that no single bot runs away with the system after you change a number.
+To host your own copy on GitHub Pages: **Settings → Pages**, source **Deploy from a branch**, pick the branch and the **/ (root)** folder, **Save**. It appears at `https://<username>.github.io/<repository>/` a minute later.
 
-</details>
+## How it's made
+
+Plain JavaScript on a 2D canvas, no libraries. Every planet, star and icon is drawn in code, and the sound is synthesized live with WebAudio, so the repository has no audio files, and its only images are the screenshots and app icons, which the game's own renderer drew.
+
+The look follows a few fixed rules, written up at the top of `js/textures.js`:
+
+- One light source, top left. Planets shade away from it, and every button and panel casts its shadow the same way.
+- Shading is two hard steps, never a smooth gradient.
+- Only things that give off light glow, and their glow is stepped.
+- Body colours come from eight hues, each in five fixed tones. Stars always use real star colours, and accretion disks always burn hot.
+- Stardust chimes up a pentatonic scale when you eat it in a run.
+
+```
+index.html            page markup: HUD, menu, how-to, death and pause screens
+css/style.css         all styling
+js/config.js          tuning numbers, forms, colours, bot names
+js/world.js           the simulation: gravity, absorbing, collisions, food, events
+js/ai.js              bot brains
+js/textures.js        procedural surfaces and the art rules
+js/renderer.js        canvas drawing
+js/audio.js           synthesized sound
+js/input.js           mouse, keyboard, touch joystick
+js/hud.js             HUD, menu and screens
+js/game.js            game states, loop, camera, device features
+tools/simulate.js     runs the simulation without a browser to check balance
+manifest.webmanifest  install-to-home-screen settings
+```
+
+All the balance numbers live in `js/config.js`. After changing them, `node tools/simulate.js 600` plays ten minutes of bots-only time headless and prints who's on top every 30 seconds, so you can check that nobody runs away with the system.

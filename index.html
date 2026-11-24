@@ -20,10 +20,10 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='34' rx='29' ry='9' fill='none' stroke='%23ffb25c' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='15' fill='%2304050c' stroke='%23ffd9a8' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;600;700;800&family=Unbounded:wght@500;700;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -33,20 +33,20 @@
 
   <div class="toolbar">
     <button id="btn-pause" class="icon-btn" type="button" aria-label="Pause" title="Pause (Esc)" hidden>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg>
     </button>
     <button id="btn-mute" class="icon-btn" type="button" aria-label="Mute sound" title="Sound (M)">
-      <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="line" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke-width="2" stroke-linecap="round"/></svg>
-      <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="line" d="M16 9l5 6M21 9l-5 6" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3.5L12 6v12l-4.5-4H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/></svg>
+      <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h3.5L12 6v12l-4.5-4H4z"/><path d="M16 10l4 4M20 10l-4 4"/></svg>
     </button>
     <button id="btn-fullscreen" class="icon-btn" type="button" aria-label="Full screen" title="Full screen (F)" hidden>
-      <svg class="fs-enter" viewBox="0 0 24 24" aria-hidden="true"><path class="line" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <svg class="fs-exit" viewBox="0 0 24 24" aria-hidden="true"><path class="line" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="fs-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"/></svg>
+      <svg class="fs-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v4H5M15 5v4h4M9 19v-4H5M15 19v-4h4"/></svg>
     </button>
   </div>
 
   <div id="hud" class="hud" hidden>
-    <section class="panel stats" aria-label="Your body">
+    <section class="plate stats" aria-label="Your body">
       <div class="stats-top">
         <span class="tier-name" id="hud-tier">Asteroid</span>
         <span class="rank" id="hud-rank">#–</span>
@@ -56,8 +56,8 @@
       <div class="next" id="hud-next">Moon at 35</div>
     </section>
 
-    <section class="panel board" aria-label="Leaderboard">
-      <h2>Heaviest bodies</h2>
+    <section class="plate board" aria-label="Leaderboard">
+      <h2>Heaviest</h2>
       <ol id="hud-board"></ol>
     </section>
 
@@ -66,95 +66,96 @@
     <div id="feed" class="feed" aria-live="polite"></div>
 
     <div class="abilities">
-      <div class="ability" id="ab-boost"><kbd>Space</kbd><span class="ab-name">Boost</span><small>burns mass</small></div>
-      <div class="ability" id="ab-surge"><kbd>E</kbd><span class="ab-name">Gravity surge</span><small id="ab-surge-cd">ready</small></div>
+      <button id="btn-boost" class="ability boost" type="button" aria-label="Boost (hold)">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 9l7 7-7 7M16 9l7 7-7 7"/></svg>
+        <span class="ab-name">Boost</span>
+        <span class="key desk-only">Space</span>
+      </button>
+      <button id="btn-surge" class="ability surge" type="button" aria-label="Gravity surge">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle class="core" cx="16" cy="16" r="3.5"/><circle cx="16" cy="16" r="8.5"/><circle class="outer" cx="16" cy="16" r="13.5"/></svg>
+        <span class="ab-name">Surge</span>
+        <span class="cd-num" id="ab-surge-cd"></span>
+        <span class="key desk-only">E</span>
+      </button>
     </div>
 
     <div id="banner" class="banner" aria-live="polite"></div>
     <div id="hint" class="hint" aria-live="polite"></div>
     <div id="joystick" class="joystick" aria-hidden="true"><div class="joy-knob"></div></div>
-
-    <div class="touch-controls">
-      <button id="btn-surge" class="touch-btn surge" type="button">Surge</button>
-      <button id="btn-boost" class="touch-btn boost" type="button">Boost</button>
-    </div>
   </div>
 
   <div id="menu" class="screen menu">
-    <div class="menu-grid">
-      <header class="brand">
-        <p class="eyebrow">A survival game about mass</p>
+    <div class="menu-inner">
+      <header class="title">
         <h1 class="logo" aria-label="Gravity.io"><span class="sag" aria-hidden="true"><span style="--d:0">G</span><span style="--d:.45">r</span><span style="--d:.8">a</span><span style="--d:1">v</span><span style="--d:.8">i</span><span style="--d:.45">t</span><span style="--d:0">y</span></span><span class="tld" aria-hidden="true">.io</span></h1>
-        <p class="tagline">Start as a stray rock. Absorb anything lighter than you, and stay out of the gravity wells of anything heavier.</p>
+        <p class="tagline">Eat what's smaller. Run from what's bigger. Become a black hole.</p>
       </header>
 
-      <form id="start-form" class="panel launch" autocomplete="off">
-        <label for="name-input">Name your body</label>
+      <form id="start-form" class="plate launch" autocomplete="off">
+        <label for="name-input" class="label">Your name</label>
         <input id="name-input" name="name" maxlength="16" spellcheck="false" placeholder="Unnamed rock">
-        <fieldset class="hues">
-          <legend>Surface color</legend>
-          <div id="hue-list" class="hue-list"></div>
-        </fieldset>
-        <button class="play-btn" type="submit">Launch <kbd class="desk-only">Enter</kbd></button>
-        <p class="best" id="best-line">No record yet. Your best run is saved on this device.</p>
+        <span class="label" id="hue-label">Your color</span>
+        <div id="hue-list" class="hue-list" role="group" aria-labelledby="hue-label"></div>
+        <button class="btn btn-primary play-btn" type="submit">Play</button>
+        <p class="best" id="best-line" hidden></p>
       </form>
 
-      <section class="panel ladder" aria-labelledby="ladder-title">
-        <h2 id="ladder-title">Evolution</h2>
-        <ol id="ladder"></ol>
+      <section class="track" aria-labelledby="track-title">
+        <h2 id="track-title" class="label">Seven forms, one black hole</h2>
+        <ol id="ladder" class="track-list"></ol>
       </section>
 
-      <section class="panel guide" aria-labelledby="controls-title">
-        <h2 id="controls-title">Controls</h2>
-        <dl class="controls touch-only">
-          <div><dt>Drag anywhere</dt><dd>Steer with the stick under your thumb</dd></div>
-          <div><dt>Boost button</dt><dd>Hold to speed up, burns mass</dd></div>
-          <div><dt>Surge button</dt><dd>Gravity surge</dd></div>
-          <div><dt>Top buttons</dt><dd>Pause, sound, full screen</dd></div>
-        </dl>
-        <dl class="controls desk-only">
-          <div><dt>Mouse or WASD</dt><dd>Steer</dd></div>
-          <div><dt>Space or left click</dt><dd>Boost, burns mass</dd></div>
-          <div><dt>E or right click</dt><dd>Gravity surge</dd></div>
-          <div><dt>Esc</dt><dd>Pause</dd></div>
-          <div><dt>M</dt><dd>Sound on or off</dd></div>
-          <div><dt>F</dt><dd>Full screen</dd></div>
-        </dl>
-        <h2>Field notes</h2>
-        <ul class="notes">
-          <li>You can absorb any body 20% lighter than you. Green names are prey, red names are predators.</li>
-          <li>The solid red ring around a predator is its point of no return. Inside it, only a boost gets you out.</li>
-          <li>Gravity surge doubles your pull for a few seconds. It recharges in 14 seconds.</li>
-          <li>Nebulae hide you from hunters but slow you down.</li>
-          <li>Wormholes take bodies up to 400 mass across the system.</li>
-          <li>A supernova blasts everything nearby, then leaves stardust and a pulsar worth 45.</li>
-          <li class="touch-only">On a phone, use Add to Home Screen to play full screen like an app.</li>
-        </ul>
-      </section>
+      <button id="btn-howto" class="btn btn-ghost howto-btn" type="button">How to play</button>
+    </div>
+  </div>
+
+  <div id="howto" class="screen howto" hidden>
+    <div class="plate howto-card" role="dialog" aria-labelledby="howto-title">
+      <h2 id="howto-title">How to play</h2>
+      <dl class="controls desk-only">
+        <div><dt>Steer</dt><dd>Mouse, or WASD / arrows</dd></div>
+        <div><dt>Boost</dt><dd>Hold Space or left click</dd></div>
+        <div><dt>Gravity surge</dt><dd>E, Shift or right click</dd></div>
+        <div><dt>Pause · sound · full screen</dt><dd>Esc · M · F</dd></div>
+      </dl>
+      <dl class="controls touch-only">
+        <div><dt>Steer</dt><dd>Drag anywhere</dd></div>
+        <div><dt>Boost</dt><dd>Hold the Boost button</dd></div>
+        <div><dt>Gravity surge</dt><dd>Tap the Surge button</dd></div>
+      </dl>
+      <ul class="tips">
+        <li>Anything 20% lighter than you is food. <b class="prey">Green names</b> are food, <b class="threat">red names</b> will eat you.</li>
+        <li>Inside a predator's solid red ring its pull beats your engine. Boost out, it costs mass.</li>
+        <li>Surge doubles your pull for a few seconds. Use it to drag prey in.</li>
+        <li>Nebulae hide you from hunters but slow you down.</li>
+        <li>Wormholes throw anything up to 400 mass across the map.</li>
+        <li>When a star starts pulsing, leave. Come back after the blast for the pulsar.</li>
+        <li class="touch-only">Add the page to your home screen to play full screen.</li>
+      </ul>
+      <button id="btn-howto-close" class="btn btn-primary" type="button">Got it</button>
     </div>
   </div>
 
   <div id="death" class="screen death" hidden>
-    <div class="panel death-card" role="dialog" aria-labelledby="death-title">
-      <p class="eyebrow danger">Absorbed</p>
-      <h2 id="death-title">Pulled in</h2>
+    <div class="plate death-card" role="dialog" aria-labelledby="death-title">
+      <h2 id="death-title" class="death-title">Absorbed</h2>
       <p id="death-sub" class="death-sub"></p>
-      <dl class="death-stats" id="death-stats"></dl>
-      <p id="death-record" class="record" hidden>New personal record</p>
+      <dl class="death-big" id="death-stats"></dl>
+      <p class="death-small" id="death-small"></p>
+      <p id="death-record" class="record" hidden>New best</p>
       <div class="actions">
-        <button id="btn-again" class="play-btn" type="button">Play again <kbd class="desk-only">Enter</kbd></button>
-        <button id="btn-menu" class="ghost-btn" type="button">Menu</button>
+        <button id="btn-again" class="btn btn-primary play-btn" type="button">Play again</button>
+        <button id="btn-menu" class="btn btn-ghost" type="button">Menu</button>
       </div>
     </div>
   </div>
 
   <div id="pause" class="screen pause" hidden>
-    <div class="panel pause-card" role="dialog" aria-labelledby="pause-title">
+    <div class="plate pause-card" role="dialog" aria-labelledby="pause-title">
       <h2 id="pause-title">Paused</h2>
-      <p class="death-sub">The system waits for you.</p>
       <div class="actions">
-        <button id="btn-resume" class="play-btn" type="button">Resume <kbd class="desk-only">Esc</kbd></button>
-        <button id="btn-quit" class="ghost-btn" type="button">Quit to menu</button>
+        <button id="btn-resume" class="btn btn-primary" type="button">Resume</button>
+        <button id="btn-quit" class="btn btn-ghost" type="button">Quit to menu</button>
       </div>
     </div>
   </div>

@@ -1,8 +1,12 @@
 'use strict';
 
 /*
- * Procedural art. Planet surfaces are equirectangular-ish strips (2:1) that the renderer scrolls
- * inside a circular clip, which reads as a rotating sphere once the shading overlay is on top.
+ * Art direction: a toy solar system.
+ *  - Anything you can touch is a flat, hard-edged shape lit from the top left (LIGHT).
+ *  - Shading is two hard steps (celShade), never a smooth gradient.
+ *  - Only light sources glow, and their glow is stepped (steppedHalo).
+ *  - Scenery (nebulae) is the one soft thing, so it reads as background.
+ *  - Colours come from tone(): five fixed steps of one of the eight BODY_HUES.
  */
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
@@ -11,30 +15,70 @@ function makeCanvas(w, h) {
   return c;
 }
 
+/* How saturated each form's surface is: rock is greyish, oceans and gas are vivid. */
+const TIER_SAT = { asteroid: 0.3, moon: 0.2, rocky: 0.8, ocean: 1, gas: 0.85, star: 1, blackhole: 1 };
+
+/*
+ * Two hard shadow steps on the side away from the light, plus a small flat highlight.
+ * Call it inside a clip of the body's outline.
+ */
+function celShade(g, x, y, r, strength = 1) {
+  const steps = [[0.5, 1.08, 0.36], [0.85, 1.17, 0.3]];
+  for (const [off, rad, a] of steps) {
+    g.fillStyle = `rgba(9,11,24,${a * strength})`;
+    g.beginPath();
+    g.rect(x - r * 1.3, y - r * 1.3, r * 2.6, r * 2.6);
+    g.arc(x + LIGHT.x * r * off, y + LIGHT.y * r * off, r * rad, 0, TAU, true);
+    g.fill('evenodd');
+  }
+  g.fillStyle = `rgba(255,252,240,${0.2 * strength})`;
+  g.beginPath();
+  g.ellipse(x + LIGHT.x * r * 0.5, y + LIGHT.y * r * 0.5, r * 0.24, r * 0.12, Math.atan2(LIGHT.y, LIGHT.x) + Math.PI / 2, 0, TAU);
+  g.fill();
+}
+
+/* Glow for light sources: hard-edged rings of falling opacity instead of a blur. */
+function steppedHalo(g, x, y, r, color, scale = 1) {
+  const steps = [[2.3, 0.06], [1.85, 0.08], [1.45, 0.12]];
+  g.fillStyle = color;
+  for (const [m, a] of steps) {
+    g.globalAlpha = a * scale;
+    g.beginPath();
+    g.arc(x, y, r * m, 0, TAU);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+}
+
+/* A smooth irregular blob through n jittered points (used for continents, maria, patches). */
+function blobPath(g, cx, cy, rx, ry, n, jit, R) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU;
+    const k = 1 - jit + R() * jit * 2;
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  g.beginPath();
+  const m0 = mid(pts[0], pts[1]);
+  g.moveTo(m0[0], m0[1]);
+  for (let i = 1; i <= n; i++) {
+    const p = pts[i % n], m = mid(p, pts[(i + 1) % n]);
+    g.quadraticCurveTo(p[0], p[1], m[0], m[1]);
+  }
+  g.closePath();
+}
+
 class TextureBank {
   constructor() {
     this.S = 256;
     this.surfaces = new Map();
-    this.glows = new Map();
-    this.shade = this._makeShade(256);
-    this.starShade = this._makeStarShade(256);
+    this.dots = new Map();
     this.clouds = [0, 1, 2].map((i) => this._makeClouds(i));
-    this.dust = DUST_COLORS.map(([h, s, l]) => this._makeDot(h, s, l));
+    this.dust = DUST_COLORS.map(([h, s, l]) => this._makeDot(hsl(h, s, l)));
     this.rocks = [];
     for (let i = 0; i < 16; i++) this.rocks.push(this._makeRockSprite(i));
-    this.spirals = new Map();
   }
-
-  spiral(hue) {
-    let c = this.spirals.get(hue);
-    if (!c) {
-      c = this._makeSpiral(hue);
-      this.spirals.set(hue, c);
-    }
-    return c;
-  }
-
-  /* ---------- cached lookups ---------- */
 
   surface(tierKey, hue, variant) {
     const key = `${tierKey}|${hue}|${variant}`;
@@ -47,118 +91,58 @@ class TextureBank {
     return tex;
   }
 
-  /* Soft round glow in a given colour. Hue is bucketed so the cache stays small. */
-  glow(hue, sat = 90, light = 65) {
+  /* Flat round dot in a hue (particles, debris). Hue bucketed to keep the cache small. */
+  dot(hue, light = 74) {
     const h = Math.round((((hue % 360) + 360) % 360) / 12) * 12;
-    const key = `${h}|${sat}|${light}`;
-    let c = this.glows.get(key);
+    const key = `${h}|${light}`;
+    let c = this.dots.get(key);
     if (!c) {
-      c = makeCanvas(64, 64);
-      const g = c.getContext('2d');
-      // Ends 2px inside the canvas so no faint edge survives upscaling as a visible square
-      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 30);
-      grd.addColorStop(0, hsl(h, sat, Math.min(96, light + 25), 1));
-      grd.addColorStop(0.18, hsl(h, sat, light, 0.75));
-      grd.addColorStop(0.45, hsl(h, sat, light - 10, 0.22));
-      grd.addColorStop(0.75, hsl(h, sat, light - 15, 0.05));
-      grd.addColorStop(1, hsl(h, sat, light - 20, 0));
-      g.fillStyle = grd;
-      g.fillRect(0, 0, 64, 64);
-      this.glows.set(key, c);
+      c = this._makeDot(hsl(h, 70, light));
+      this.dots.set(key, c);
     }
     return c;
   }
 
-  /* ---------- generators ---------- */
-
-  _makeShade(S) {
-    const c = makeCanvas(S, S);
-    const g = c.getContext('2d');
+  _makeDot(color) {
+    const c = makeCanvas(16, 16), g = c.getContext('2d');
+    g.fillStyle = color;
     g.beginPath();
-    g.arc(S / 2, S / 2, S / 2, 0, TAU);
-    g.clip();
-    const grd = g.createRadialGradient(S * 0.34, S * 0.3, S * 0.02, S * 0.46, S * 0.44, S * 0.66);
-    grd.addColorStop(0, 'rgba(255,255,255,0.22)');
-    grd.addColorStop(0.3, 'rgba(255,255,255,0.0)');
-    grd.addColorStop(0.62, 'rgba(2,3,14,0.35)');
-    grd.addColorStop(0.85, 'rgba(2,3,14,0.78)');
-    grd.addColorStop(1, 'rgba(2,3,14,0.92)');
-    g.fillStyle = grd;
-    g.fillRect(0, 0, S, S);
-    // faint rim light on the lit side
-    g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = 'rgba(190,210,255,0.10)';
-    g.lineWidth = S * 0.025;
-    g.beginPath();
-    g.arc(S / 2, S / 2, S / 2 - S * 0.012, Math.PI * 0.85, Math.PI * 1.65);
-    g.stroke();
-    return c;
-  }
-
-  _makeStarShade(S) {
-    const c = makeCanvas(S, S);
-    const g = c.getContext('2d');
-    const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-    grd.addColorStop(0, 'rgba(255,255,240,0.55)');
-    grd.addColorStop(0.55, 'rgba(255,240,210,0.12)');
-    grd.addColorStop(0.9, 'rgba(120,40,0,0.18)');
-    grd.addColorStop(1, 'rgba(90,20,0,0.45)');
-    g.fillStyle = grd;
-    g.beginPath();
-    g.arc(S / 2, S / 2, S / 2, 0, TAU);
+    g.arc(8, 8, 7, 0, TAU);
     g.fill();
-    return c;
-  }
-
-  _makeDot(h, s, l) {
-    const c = makeCanvas(32, 32);
-    const g = c.getContext('2d');
-    const grd = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grd.addColorStop(0, hsl(h, s, 97, 1));
-    grd.addColorStop(0.2, hsl(h, s, l, 0.95));
-    grd.addColorStop(0.5, hsl(h, s, l - 10, 0.25));
-    grd.addColorStop(1, hsl(h, s, l - 20, 0));
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 32, 32);
     return c;
   }
 
   _makeRockSprite(i) {
     const S = 64, c = makeCanvas(S, S), g = c.getContext('2d');
     const R = mulberry32(9001 + i * 77);
-    const shape = makeRockShape(11, 0.35, R);
-    const hue = 20 + R() * 25;
+    const shape = makeRockShape(11, 0.3, R);
+    const hue = [28, 34, 210, 20][i % 4];
+    const r = S / 2 - 3;
     g.translate(S / 2, S / 2);
     g.beginPath();
     for (let k = 0; k < shape.length; k++) {
-      const a = (k / shape.length) * TAU, rr = (S / 2 - 3) * shape[k];
-      if (k === 0) g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
-      else g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      const a = (k / shape.length) * TAU;
+      if (k === 0) g.moveTo(Math.cos(a) * r * shape[k], Math.sin(a) * r * shape[k]);
+      else g.lineTo(Math.cos(a) * r * shape[k], Math.sin(a) * r * shape[k]);
     }
     g.closePath();
-    const grd = g.createRadialGradient(-8, -10, 2, 0, 0, S / 2);
-    grd.addColorStop(0, hsl(hue, 14, 62));
-    grd.addColorStop(0.6, hsl(hue, 12, 38));
-    grd.addColorStop(1, hsl(hue, 14, 20));
-    g.fillStyle = grd;
+    g.fillStyle = tone(hue, 0.25, 'base');
     g.fill();
     g.save();
     g.clip();
-    for (let k = 0; k < 6; k++) {
-      const x = (R() - 0.5) * S * 0.6, y = (R() - 0.5) * S * 0.6, r = 2 + R() * 5;
-      g.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let k = 0; k < 3; k++) {
+      const x = (R() - 0.5) * r, y = (R() - 0.5) * r, cr = 3 + R() * 5;
+      g.fillStyle = tone(hue, 0.25, 'dark');
       g.beginPath();
-      g.arc(x, y, r, 0, TAU);
+      g.arc(x, y, cr, 0, TAU);
       g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.12)';
+      g.fillStyle = tone(hue, 0.25, 'mid');
       g.beginPath();
-      g.arc(x + r * 0.25, y + r * 0.25, r * 0.8, 0, TAU);
+      g.arc(x + cr * 0.25, y + cr * 0.25, cr * 0.75, 0, TAU);
       g.fill();
     }
+    celShade(g, 0, 0, r);
     g.restore();
-    g.strokeStyle = 'rgba(255,230,200,0.18)';
-    g.lineWidth = 1.5;
-    g.stroke();
     return c;
   }
 
@@ -166,39 +150,12 @@ class TextureBank {
     const S = this.S, W = S * 2, H = S;
     const c = makeCanvas(W, H), g = c.getContext('2d');
     const R = mulberry32(777 + seed * 31);
-    const wrap = (x, fn) => {
-      fn(x);
-      if (x < S * 0.6) fn(x + W);
-      if (x > W - S * 0.6) fn(x - W);
-    };
-    for (let i = 0; i < 70; i++) {
-      const x = R() * W, y = H * (0.12 + R() * 0.76);
-      const rx = 14 + R() * 60, ry = 4 + R() * 10;
-      const a = 0.12 + R() * 0.3;
-      wrap(x, (X) => {
-        g.fillStyle = `rgba(255,255,255,${a})`;
+    g.fillStyle = 'rgba(244,240,230,0.9)';
+    for (let i = 0; i < 16; i++) {
+      const x = R() * W, y = H * (0.15 + R() * 0.7), w = 30 + R() * 80, h = 6 + R() * 8;
+      for (const X of [x, x - W, x + W]) {
         g.beginPath();
-        g.ellipse(X, y, rx, ry, (R() - 0.5) * 0.3, 0, TAU);
-        g.fill();
-      });
-    }
-    return c;
-  }
-
-  _makeSpiral(hue) {
-    const S = 256, c = makeCanvas(S, S), g = c.getContext('2d');
-    g.translate(S / 2, S / 2);
-    g.globalCompositeOperation = 'lighter';
-    for (let arm = 0; arm < 3; arm++) {
-      const off = (arm / 3) * TAU;
-      for (let i = 0; i < 140; i++) {
-        const t = i / 140;
-        const r = 8 + t * (S / 2 - 12);
-        const a = off + t * 5.2;
-        const alpha = (1 - t) * 0.5 + 0.05;
-        g.fillStyle = hsl(hue + t * 40, 90, 55 + (1 - t) * 30, alpha * 0.4);
-        g.beginPath();
-        g.arc(Math.cos(a) * r, Math.sin(a) * r, 2 + (1 - t) * 6, 0, TAU);
+        g.roundRect(X - w / 2, y - h / 2, w, h, h / 2);
         g.fill();
       }
     }
@@ -210,184 +167,135 @@ class TextureBank {
     const c = makeCanvas(W, H), g = c.getContext('2d');
     const R = mulberry32(seed);
     const rr = (a, b) => a + R() * (b - a);
+    const k = TIER_SAT[tier] || 1;
     const wrap = (x, fn) => {
       fn(x);
-      if (x < S * 0.5) fn(x + W);
-      if (x > W - S * 0.5) fn(x - W);
+      if (x < S) fn(x + W);
+      if (x > W - S) fn(x - W);
+    };
+    const blob = (x, y, rx, ry, color, n = 11, jit = 0.28) => {
+      g.fillStyle = color;
+      wrap(x, (X) => {
+        blobPath(g, X, y, rx, ry, n, jit, R);
+        g.fill();
+      });
     };
     const disc = (x, y, r, color) => {
       g.fillStyle = color;
-      g.beginPath();
-      g.arc(x, y, r, 0, TAU);
-      g.fill();
-    };
-    const softBlob = (x, y, r, h, s, l, a) => {
       wrap(x, (X) => {
-        const grd = g.createRadialGradient(X, y, 0, X, y, r);
-        grd.addColorStop(0, hsl(h, s, l, a));
-        grd.addColorStop(1, hsl(h, s, l, 0));
-        g.fillStyle = grd;
-        g.fillRect(X - r, y - r, r * 2, r * 2);
+        g.beginPath();
+        g.arc(X, y, r, 0, TAU);
+        g.fill();
       });
     };
-    const crater = (x, y, r, h, l) => {
-      wrap(x, (X) => {
-        disc(X, y, r, hsl(h, 8, l - 14, 0.55));
-        g.strokeStyle = hsl(h, 8, l + 16, 0.45);
-        g.lineWidth = Math.max(1, r * 0.22);
-        g.beginPath();
-        g.arc(X, y, r * 0.92, Math.PI * 0.05, Math.PI * 0.95);
-        g.stroke();
-        g.strokeStyle = hsl(h, 8, l - 22, 0.45);
-        g.beginPath();
-        g.arc(X, y, r * 0.92, Math.PI * 1.05, Math.PI * 1.95);
-        g.stroke();
-      });
+    // A crater is a dish: its near (top-left) wall is in shadow, its far wall catches the light.
+    const crater = (x, y, r, shadowLevel, floorLevel) => {
+      disc(x, y, r, tone(hue, k, shadowLevel));
+      disc(x + r * 0.24, y + r * 0.24, r * 0.76, tone(hue, k, floorLevel));
     };
-    const continent = (x, y, size, n, color) => {
-      let px = x, py = y;
+    const caps = (color) => {
       g.fillStyle = color;
-      for (let i = 0; i < n; i++) {
-        px += (R() - 0.5) * size * 0.7;
-        py += (R() - 0.5) * size * 0.35;
-        py = clamp(py, H * 0.12, H * 0.88);
-        const r = size * (0.12 + R() * 0.22);
-        wrap(px, (X) => {
-          g.beginPath();
-          g.arc(X, py, r, 0, TAU);
-          g.fill();
-        });
+      for (const top of [true, false]) {
+        g.beginPath();
+        const y0 = top ? 0 : H, dir = top ? 1 : -1, depth = H * 0.1;
+        g.moveTo(0, y0);
+        for (let x = 0; x <= W; x += 16) g.lineTo(x, y0 + dir * (depth + Math.sin((x / W) * TAU * 3 + (top ? 0 : 2)) * depth * 0.35));
+        g.lineTo(W, y0);
+        g.closePath();
+        g.fill();
       }
     };
 
     switch (tier) {
       case 'asteroid': {
-        g.fillStyle = hsl(hue, 10, 32);
+        g.fillStyle = tone(hue, k, 'mid');
         g.fillRect(0, 0, W, H);
-        for (let i = 0; i < 900; i++) {
-          const x = R() * W, y = R() * H;
-          disc(x, y, rr(0.8, 3.5), hsl(hue, 8, rr(18, 48), 0.5));
-        }
-        for (let i = 0; i < 28; i++) crater(R() * W, rr(10, H - 10), rr(5, 22), hue, 32);
+        for (let i = 0; i < 8; i++) blob(R() * W, R() * H, rr(24, 60), rr(18, 40), tone(hue, k, R() < 0.5 ? 'base' : 'dark'));
+        for (let i = 0; i < 7; i++) crater(R() * W, rr(30, H - 30), rr(8, 22), 'dark', 'mid');
         break;
       }
       case 'moon': {
-        g.fillStyle = hsl(hue, 7, 60);
+        g.fillStyle = tone(hue, k, 'light');
         g.fillRect(0, 0, W, H);
-        for (let i = 0; i < 9; i++) softBlob(R() * W, rr(30, H - 30), rr(30, 80), hue, 8, 40, 0.55);
-        for (let i = 0; i < 700; i++) disc(R() * W, R() * H, rr(0.6, 2.2), hsl(hue, 6, rr(45, 75), 0.35));
-        for (let i = 0; i < 46; i++) crater(R() * W, rr(8, H - 8), rr(3, 20), hue, 58);
+        for (let i = 0; i < 4; i++) blob(R() * W, rr(50, H - 50), rr(40, 80), rr(26, 46), tone(hue, k, 'base'), 12, 0.3);
+        for (let i = 0; i < 12; i++) crater(R() * W, rr(20, H - 20), rr(5, 20), 'mid', 'light');
         break;
       }
       case 'rocky': {
-        g.fillStyle = hsl(hue, 42, 38);
+        g.fillStyle = tone(hue, k, 'base');
         g.fillRect(0, 0, W, H);
-        for (let i = 0; i < 46; i++) softBlob(R() * W, R() * H, rr(18, 70), hue + rr(-20, 20), rr(30, 55), rr(26, 52), 0.7);
-        g.lineCap = 'round';
-        for (let i = 0; i < 7; i++) {
-          let x = R() * W, y = rr(30, H - 30);
-          g.strokeStyle = hsl(hue, 40, 20, 0.55);
-          g.lineWidth = rr(1.5, 3.5);
-          g.beginPath();
-          g.moveTo(x, y);
-          for (let k = 0; k < 9; k++) {
-            x += rr(6, 22);
-            y += rr(-10, 10);
-            g.lineTo(x, y);
-          }
-          g.stroke();
-        }
-        for (let i = 0; i < 12; i++) crater(R() * W, rr(20, H - 20), rr(3, 10), hue, 42);
-        const cap = g.createLinearGradient(0, 0, 0, H);
-        cap.addColorStop(0, 'rgba(245,248,255,0.9)');
-        cap.addColorStop(0.09, 'rgba(245,248,255,0)');
-        cap.addColorStop(0.91, 'rgba(245,248,255,0)');
-        cap.addColorStop(1, 'rgba(245,248,255,0.9)');
-        g.fillStyle = cap;
-        g.fillRect(0, 0, W, H);
+        for (let i = 0; i < 9; i++) blob(R() * W, rr(30, H - 30), rr(30, 70), rr(16, 34), tone(hue, k, ['mid', 'light', 'dark'][Math.floor(R() * 3)]));
+        for (let i = 0; i < 5; i++) crater(R() * W, rr(40, H - 40), rr(4, 9), 'dark', 'base');
+        caps(COLORS.bone);
         break;
       }
       case 'ocean': {
-        const sea = g.createLinearGradient(0, 0, 0, H);
-        sea.addColorStop(0, hsl(hue, 55, 26));
-        sea.addColorStop(0.5, hsl(hue, 70, 36));
-        sea.addColorStop(1, hsl(hue, 55, 26));
-        g.fillStyle = sea;
+        g.fillStyle = tone(hue, k, 'mid');
         g.fillRect(0, 0, W, H);
-        for (let i = 0; i < 30; i++) softBlob(R() * W, R() * H, rr(20, 60), hue + rr(-10, 10), 70, rr(30, 48), 0.5);
-        const landHue = lerp(105, hue, 0.2);
-        for (let i = 0; i < 6; i++) {
-          const x = R() * W, y = rr(H * 0.2, H * 0.8), size = rr(50, 110);
-          continent(x, y, size, 16, hsl(landHue, 32, 22, 0.95));
-          continent(x, y, size * 0.85, 12, hsl(landHue + rr(-25, 10), 40, 36));
-          continent(x + rr(-10, 10), y, size * 0.5, 8, hsl(42, 38, 52, 0.8));
+        for (let i = 0; i < 4; i++) blob(R() * W, rr(40, H - 40), rr(40, 90), rr(20, 40), tone(hue, k, 'dark', 0.55));
+        const landHue = hue > 60 && hue < 140 ? 36 : 96;
+        for (let i = 0; i < 4; i++) {
+          const x = R() * W, y = rr(H * 0.25, H * 0.75), rx = rr(40, 75), ry = rr(24, 44);
+          blob(x, y, rx * 1.18, ry * 1.22, tone(hue, k, 'base'), 12, 0.22);
+          blob(x, y, rx, ry, tone(landHue, 0.7, 'base'), 12, 0.3);
+          blob(x + rr(-8, 8), y + rr(-6, 6), rx * 0.45, ry * 0.45, tone(landHue, 0.6, 'mid'), 9, 0.3);
         }
-        const cap = g.createLinearGradient(0, 0, 0, H);
-        cap.addColorStop(0, 'rgba(250,252,255,0.95)');
-        cap.addColorStop(0.07, 'rgba(250,252,255,0)');
-        cap.addColorStop(0.93, 'rgba(250,252,255,0)');
-        cap.addColorStop(1, 'rgba(250,252,255,0.95)');
-        g.fillStyle = cap;
-        g.fillRect(0, 0, W, H);
+        caps(COLORS.bone);
         break;
       }
       case 'gas': {
-        let y = 0;
+        const levels = ['light', 'base', 'mid', 'base', 'light', 'dark', 'base', 'light', 'mid'];
+        let y = -6, i = 0;
+        const off = Math.floor(R() * levels.length);
         while (y < H) {
-          const bh = rr(6, 26);
-          g.fillStyle = hsl(hue + rr(-28, 28), rr(35, 65), rr(34, 72));
+          const bh = rr(16, 40);
+          g.fillStyle = tone(hue, k, levels[(i + off) % levels.length]);
+          const amp = rr(1.5, 5), freq = 2 + Math.floor(R() * 4), ph = rr(0, TAU);
           g.beginPath();
           g.moveTo(0, y);
-          const amp = rr(1, 4), freq = randInt(2, 6);
-          for (let x = 0; x <= W; x += 16) g.lineTo(x, y + Math.sin((x / W) * TAU * freq) * amp);
-          for (let x = W; x >= 0; x -= 16) g.lineTo(x, y + bh + 3 + Math.sin((x / W) * TAU * freq + 1) * amp);
+          for (let x = 0; x <= W; x += 16) g.lineTo(x, y + Math.sin((x / W) * TAU * freq + ph) * amp);
+          for (let x = W; x >= 0; x -= 16) g.lineTo(x, y + bh + 4 + Math.sin((x / W) * TAU * freq + ph + 1) * amp);
           g.closePath();
           g.fill();
           y += bh;
+          i++;
         }
-        for (let i = 0; i < 40; i++) {
-          const x = R() * W, yy = R() * H;
-          wrap(x, (X) => {
-            g.fillStyle = hsl(hue + rr(-20, 20), 40, rr(50, 85), 0.18);
-            g.beginPath();
-            g.ellipse(X, yy, rr(10, 40), rr(1.5, 4), 0, 0, TAU);
-            g.fill();
-          });
-        }
-        const sx = R() * W, sy = rr(H * 0.55, H * 0.75);
+        const sx = R() * W, sy = rr(H * 0.58, H * 0.72);
+        g.fillStyle = tone(hue, k, 'dark');
         wrap(sx, (X) => {
-          g.fillStyle = hsl(hue + 18, 70, 38, 0.85);
           g.beginPath();
-          g.ellipse(X, sy, 28, 13, 0, 0, TAU);
+          g.ellipse(X, sy, 30, 14, 0, 0, TAU);
           g.fill();
-          g.strokeStyle = hsl(hue + 25, 60, 70, 0.6);
-          g.lineWidth = 3;
-          g.stroke();
-          g.fillStyle = hsl(hue + 10, 75, 55, 0.7);
+        });
+        g.fillStyle = tone(hue + 12, k, 'light');
+        wrap(sx, (X) => {
           g.beginPath();
-          g.ellipse(X - 3, sy - 1, 14, 6, 0, 0, TAU);
+          g.ellipse(X + 3, sy + 2, 18, 7, 0, 0, TAU);
           g.fill();
         });
         break;
       }
       case 'star': {
-        g.fillStyle = hsl(hue, 95, 62);
+        g.fillStyle = hsl(hue, 92, 68);
         g.fillRect(0, 0, W, H);
-        for (let i = 0; i < 1400; i++) {
-          const x = R() * W, y = R() * H, r = rr(2, 7);
-          disc(x, y, r, R() < 0.5 ? hsl(hue + rr(-8, 8), 100, rr(70, 88), 0.35) : hsl(hue - 10, 100, rr(40, 52), 0.25));
-        }
-        for (let i = 0; i < 5; i++) {
-          const x = R() * W, y = rr(H * 0.3, H * 0.7), r = rr(4, 9);
+        g.fillStyle = hsl(hue, 100, 82);
+        for (let i = 0; i < 14; i++) {
+          const x = R() * W, y = rr(20, H - 20), w = rr(30, 90), h = rr(5, 10);
           wrap(x, (X) => {
-            disc(X, y, r * 1.8, hsl(hue - 10, 90, 38, 0.45));
-            disc(X, y, r, hsl(hue - 15, 80, 18, 0.8));
+            g.beginPath();
+            g.roundRect(X - w / 2, y - h / 2, w, h, h / 2);
+            g.fill();
           });
+        }
+        for (let i = 0; i < 4; i++) {
+          const x = R() * W, y = rr(H * 0.3, H * 0.7), r = rr(5, 10);
+          disc(x, y, r * 1.7, hsl(hue - 8, 90, 56));
+          disc(x, y, r, hsl(hue - 12, 80, 40));
         }
         break;
       }
       default: {
-        g.fillStyle = hsl(hue, 30, 40);
+        g.fillStyle = tone(hue, k, 'base');
         g.fillRect(0, 0, W, H);
       }
     }

@@ -124,7 +124,7 @@ class World {
 
   _spawnBot(mass) {
     const p = this.findSafeSpot(mass);
-    const b = new Body({ name: this._freeName(), mass, x: p.x, y: p.y, hue: 15 + 30 * randInt(0, 11) });
+    const b = new Body({ name: this._freeName(), mass, x: p.x, y: p.y, hue: pick(BODY_HUES) });
     b.brain = new BotBrain(b);
     b.stats.born = this.time;
     b.shield = 1.5;
@@ -423,7 +423,7 @@ class World {
             this._shed(b, b.mass * frac, normal + Math.PI, true);
             a.collCd = b.collCd = 0.5;
             const cx = a.x + nx * a.r, cy = a.y + ny * a.r;
-            this.burst(cx, cy, 14, (a.hue + b.hue) / 2, 220, 4, 0.5, 80);
+            this.burst(cx, cy, 14, a.hue, 220, 4, 0.5, 80);
             this.emit('collide', { a, b, x: cx, y: cy, power: -rv });
           }
         }

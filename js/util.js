@@ -54,6 +54,29 @@ function tierIndexForMass(m) {
   return t;
 }
 
+/* One light source for the whole game: the top left. Planet terminators and UI shadows both obey it. */
+const LIGHT = { x: -0.62, y: -0.78 };
+
+/* Tone ladder: every body colour is one of these five steps of a hue. k scales saturation (rock is greyer). */
+const TONE = { light: [60, 76], base: [52, 61], mid: [46, 48], dark: [42, 35], deep: [42, 22] };
+function tone(h, k, level, a = 1) {
+  const t = TONE[level];
+  return hsl(h, Math.round(t[0] * k), t[1], a);
+}
+
+/*
+ * Stars don't come in pink. A body's hue picks the nearest real stellar colour instead:
+ * warm hues burn orange-red to yellow, greens and teals burn white, blues and violets burn blue-white.
+ */
+function starHue(h) {
+  h = ((h % 360) + 360) % 360;
+  if (h < 25 || h >= 300) return 18;
+  if (h < 50) return 32;
+  if (h < 130) return 46;
+  if (h < 190) return 52;
+  return 214;
+}
+
 function hsl(h, s, l, a = 1) {
   return `hsla(${((h % 360) + 360) % 360},${s}%,${l}%,${a})`;
 }
