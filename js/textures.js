@@ -55,10 +55,12 @@ class TextureBank {
     if (!c) {
       c = makeCanvas(64, 64);
       const g = c.getContext('2d');
-      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      // Ends 2px inside the canvas so no faint edge survives upscaling as a visible square
+      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 30);
       grd.addColorStop(0, hsl(h, sat, Math.min(96, light + 25), 1));
       grd.addColorStop(0.18, hsl(h, sat, light, 0.75));
       grd.addColorStop(0.45, hsl(h, sat, light - 10, 0.22));
+      grd.addColorStop(0.75, hsl(h, sat, light - 15, 0.05));
       grd.addColorStop(1, hsl(h, sat, light - 20, 0));
       g.fillStyle = grd;
       g.fillRect(0, 0, 64, 64);

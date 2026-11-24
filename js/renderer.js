@@ -61,7 +61,7 @@ class Renderer {
     const toScreen = (x, y) => ({ x: (x - cam.x) * z + w / 2 + cam.sx, y: (y - cam.y) * z + h / 2 + cam.sy });
     this._drawLabels(world, z, focus, toScreen);
     this._drawTexts(world, toScreen);
-    this._drawIndicators(world, toScreen, t);
+    this._drawIndicators(world, toScreen, t, z);
     this._drawVignette(opts.danger || 0, t);
     if (opts.flash > 0) {
       ctx.fillStyle = `rgba(255,248,235,${Math.min(0.85, opts.flash)})`;
@@ -853,7 +853,7 @@ class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  _drawIndicators(world, toScreen, t) {
+  _drawIndicators(world, toScreen, t, z) {
     const ctx = this.ctx, w = this.w, h = this.h;
     for (const sn of world.supernovae) {
       const p = toScreen(sn.x, sn.y);
@@ -863,12 +863,13 @@ class Renderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (inside) {
+        const ly = Math.max(24, p.y - CONFIG.SUPERNOVA_CORE * z - 18);
         ctx.font = '800 15px Unbounded, Manrope, system-ui, sans-serif';
         ctx.lineWidth = 4;
         ctx.strokeStyle = 'rgba(3,4,12,0.85)';
-        ctx.strokeText(`SUPERNOVA ${secs}`, p.x, p.y - 40);
+        ctx.strokeText(`SUPERNOVA ${secs}`, p.x, ly);
         ctx.fillStyle = `rgba(255,190,140,${pulse})`;
-        ctx.fillText(`SUPERNOVA ${secs}`, p.x, p.y - 40);
+        ctx.fillText(`SUPERNOVA ${secs}`, p.x, ly);
         continue;
       }
       const cx = w / 2, cy = h / 2;
