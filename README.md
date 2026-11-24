@@ -47,11 +47,19 @@ Each form looks different and pulls harder than the one before it.
 
 | | Desktop | Touch |
 | :--- | :--- | :--- |
-| **Steer** | Mouse (farther cursor = faster) or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys | Drag anywhere |
+| **Steer** | Mouse (farther cursor = faster) or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys | Drag anywhere. A joystick appears under your thumb |
 | **Boost** | Hold <kbd>Space</kbd> or left click. Faster, but burns mass | Hold the Boost button |
 | **Gravity surge** | <kbd>E</kbd>, <kbd>Shift</kbd> or right click. Stronger, longer pull for 2.6 s, recharges in 14 s | Tap the Surge button |
 | **Pause** | <kbd>Esc</kbd> or <kbd>P</kbd> | Pause button |
 | **Sound** | <kbd>M</kbd> | Speaker button |
+| **Full screen** | <kbd>F</kbd> or the full-screen button | Full-screen button, or Add to Home Screen |
+
+### On a phone or tablet
+
+- **Portrait or landscape.** The HUD rearranges itself for tall, wide and very small screens.
+- **Floating joystick.** Wherever your thumb lands becomes the stick, so your thumb never covers your own planet. A second finger works the Boost and Surge buttons.
+- **Install it.** In the browser menu choose **Add to Home Screen**. Gravity.io then opens full screen with its own icon, like an app.
+- **Made for small devices.** The screen stays awake while you play, you feel absorptions on phones that support vibration, and the game lowers its resolution automatically if frames start dropping.
 
 ## Survive the system
 
@@ -114,11 +122,12 @@ js/ai.js          bot brains
 js/textures.js    procedural planet, star and sprite textures
 js/renderer.js    canvas rendering
 js/audio.js       synthesized sound effects
-js/input.js       mouse, keyboard and touch
+js/input.js       mouse, keyboard, touch joystick
 js/hud.js         stats, leaderboard, minimap, feed, menu and death screens
 js/game.js        state machine, loop, camera, event handling
 tools/simulate.js headless balance simulation
-assets/           README and link-preview images
+manifest.webmanifest  install-to-home-screen settings
+assets/           icons, README and link-preview images
 ```
 
 </details>

@@ -6,6 +6,12 @@
   <title>Gravity.io</title>
   <meta name="description" content="Start as a stray rock, absorb everything smaller than you, and grow into a black hole. Bigger bodies pull you in with gravity.">
   <meta name="theme-color" content="#04050c">
+  <meta name="gravity:manifest" content="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gravity.io">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Gravity.io">
   <meta property="og:description" content="Start as a stray rock, absorb everything lighter than you, and grow into a black hole. Free in your browser.">
@@ -30,8 +36,12 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
     </button>
     <button id="btn-mute" class="icon-btn" type="button" aria-label="Mute sound" title="Sound (M)">
-      <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
-      <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 9l5 6M21 9l-5 6" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="line" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="line" d="M16 9l5 6M21 9l-5 6" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button id="btn-fullscreen" class="icon-btn" type="button" aria-label="Full screen" title="Full screen (F)" hidden>
+      <svg class="fs-enter" viewBox="0 0 24 24" aria-hidden="true"><path class="line" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="fs-exit" viewBox="0 0 24 24" aria-hidden="true"><path class="line" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
 
@@ -61,6 +71,8 @@
     </div>
 
     <div id="banner" class="banner" aria-live="polite"></div>
+    <div id="hint" class="hint" aria-live="polite"></div>
+    <div id="joystick" class="joystick" aria-hidden="true"><div class="joy-knob"></div></div>
 
     <div class="touch-controls">
       <button id="btn-surge" class="touch-btn surge" type="button">Surge</button>
@@ -83,7 +95,7 @@
           <legend>Surface color</legend>
           <div id="hue-list" class="hue-list"></div>
         </fieldset>
-        <button class="play-btn" type="submit">Launch <kbd>Enter</kbd></button>
+        <button class="play-btn" type="submit">Launch <kbd class="desk-only">Enter</kbd></button>
         <p class="best" id="best-line">No record yet. Your best run is saved on this device.</p>
       </form>
 
@@ -94,12 +106,19 @@
 
       <section class="panel guide" aria-labelledby="controls-title">
         <h2 id="controls-title">Controls</h2>
-        <dl class="controls">
+        <dl class="controls touch-only">
+          <div><dt>Drag anywhere</dt><dd>Steer with the stick under your thumb</dd></div>
+          <div><dt>Boost button</dt><dd>Hold to speed up, burns mass</dd></div>
+          <div><dt>Surge button</dt><dd>Gravity surge</dd></div>
+          <div><dt>Top buttons</dt><dd>Pause, sound, full screen</dd></div>
+        </dl>
+        <dl class="controls desk-only">
           <div><dt>Mouse or WASD</dt><dd>Steer</dd></div>
           <div><dt>Space or left click</dt><dd>Boost, burns mass</dd></div>
           <div><dt>E or right click</dt><dd>Gravity surge</dd></div>
           <div><dt>Esc</dt><dd>Pause</dd></div>
           <div><dt>M</dt><dd>Sound on or off</dd></div>
+          <div><dt>F</dt><dd>Full screen</dd></div>
         </dl>
         <h2>Field notes</h2>
         <ul class="notes">
@@ -109,6 +128,7 @@
           <li>Nebulae hide you from hunters but slow you down.</li>
           <li>Wormholes take bodies up to 400 mass across the system.</li>
           <li>A supernova blasts everything nearby, then leaves stardust and a pulsar worth 45.</li>
+          <li class="touch-only">On a phone, use Add to Home Screen to play full screen like an app.</li>
         </ul>
       </section>
     </div>
@@ -122,7 +142,7 @@
       <dl class="death-stats" id="death-stats"></dl>
       <p id="death-record" class="record" hidden>New personal record</p>
       <div class="actions">
-        <button id="btn-again" class="play-btn" type="button">Play again <kbd>Enter</kbd></button>
+        <button id="btn-again" class="play-btn" type="button">Play again <kbd class="desk-only">Enter</kbd></button>
         <button id="btn-menu" class="ghost-btn" type="button">Menu</button>
       </div>
     </div>
@@ -133,7 +153,7 @@
       <h2 id="pause-title">Paused</h2>
       <p class="death-sub">The system waits for you.</p>
       <div class="actions">
-        <button id="btn-resume" class="play-btn" type="button">Resume <kbd>Esc</kbd></button>
+        <button id="btn-resume" class="play-btn" type="button">Resume <kbd class="desk-only">Esc</kbd></button>
         <button id="btn-quit" class="ghost-btn" type="button">Quit to menu</button>
       </div>
     </div>

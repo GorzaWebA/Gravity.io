@@ -11,7 +11,7 @@ class Hud {
       surgeCd: $('ab-surge-cd'), touchSurge: $('btn-surge'), menu: $('menu'), death: $('death'), pause: $('pause'),
       nameInput: $('name-input'), hueList: $('hue-list'), ladder: $('ladder'), best: $('best-line'),
       deathTitle: $('death-title'), deathSub: $('death-sub'), deathStats: $('death-stats'), deathRecord: $('death-record'),
-      mute: $('btn-mute'), pauseBtn: $('btn-pause'),
+      mute: $('btn-mute'), pauseBtn: $('btn-pause'), touchBoost: $('btn-boost'), hint: $('hint'),
     };
     this.mini = $('minimap');
     this.mctx = this.mini.getContext('2d');
@@ -106,10 +106,12 @@ class Hud {
     el.pauseBtn.hidden = state !== 'playing';
     document.body.classList.toggle('in-game', state !== 'menu');
     if (state === 'playing') this.resize();
+    if (state !== 'playing') this.el.hint.classList.remove('show');
     if (state !== 'dead') el.death.hidden = true;
     if (state === 'menu') {
       el.feed.innerHTML = '';
-      setTimeout(() => el.nameInput.focus({ preventScroll: true }), 50);
+      // Focusing the name field on a phone would pop the keyboard up over the menu
+      if (!document.body.classList.contains('touch')) setTimeout(() => el.nameInput.focus({ preventScroll: true }), 50);
     }
   }
 
@@ -134,6 +136,14 @@ class Hud {
     this.el.feed.appendChild(line);
     while (this.el.feed.children.length > 6) this.el.feed.firstChild.remove();
     setTimeout(() => line.remove(), 6100);
+  }
+
+  hint(text, seconds) {
+    const h = this.el.hint;
+    h.textContent = text;
+    h.classList.add('show');
+    clearTimeout(this._hintTimer);
+    this._hintTimer = setTimeout(() => h.classList.remove('show'), seconds * 1000);
   }
 
   banner(eyebrow, title, sub, kind = '') {
@@ -181,6 +191,8 @@ class Hud {
     el.surge.classList.toggle('ready', p.surgeCd <= 0);
     this._set('surgeCd', el.surgeCd, p.surgeT > 0 ? 'pulling' : p.surgeCd > 0 ? `${Math.ceil(p.surgeCd)}s` : 'ready');
     el.touchSurge.classList.toggle('cooling', p.surgeCd > 0);
+    el.touchSurge.style.setProperty('--cd', cd.toFixed(3));
+    el.touchBoost.classList.toggle('active', p.boosting);
 
     this._boardT -= dt;
     if (this._boardT <= 0) {
@@ -310,6 +322,8 @@ class Hud {
     el.deathStats.innerHTML = stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
     el.deathRecord.hidden = !info.record;
     el.death.hidden = false;
-    setTimeout(() => document.getElementById('btn-again').focus({ preventScroll: true }), 50);
+    if (!document.body.classList.contains('touch')) {
+      setTimeout(() => document.getElementById('btn-again').focus({ preventScroll: true }), 50);
+    }
   }
 }

@@ -23,11 +23,16 @@ class Game {
     this.deathTimer = 0;
     this.attract = { target: null, timer: 0 };
     this.last = performance.now();
+    this.perf = { ema: 0, slow: 0, warm: 0 };
+    this.wakeLock = null;
+    this.runs = storageGet('gravity.runs', 0);
 
     this.hud.initMenu(this.prefs, this.best);
     this.hud.setMuted(this.sfx.muted);
     this.hud.setScreen('menu');
     this._bindUi();
+    this._setupFullscreen();
+    this._linkManifest();
 
     window.addEventListener('resize', () => {
       this.renderer.resize();
@@ -35,6 +40,7 @@ class Game {
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state === 'playing') this.setPaused(true);
+      if (!document.hidden && this.state === 'playing') this._wake(true);
     });
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -51,6 +57,94 @@ class Game {
     on('btn-quit', () => this.toMenu());
     on('btn-pause', () => this.setPaused(true));
     on('btn-mute', () => this.toggleMute());
+    on('btn-fullscreen', () => this.toggleFullscreen());
+  }
+
+  /* ---------- device integration ---------- */
+
+  _setupFullscreen() {
+    const d = document;
+    const btn = document.getElementById('btn-fullscreen');
+    const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+    btn.hidden = !(d.fullscreenEnabled || d.webkitFullscreenEnabled) || standalone;
+    const sync = () => {
+      const on = !!(d.fullscreenElement || d.webkitFullscreenElement);
+      btn.classList.toggle('is-fs', on);
+      btn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+    };
+    d.addEventListener('fullscreenchange', sync);
+    d.addEventListener('webkitfullscreenchange', sync);
+  }
+
+  toggleFullscreen() {
+    const d = document, el = d.documentElement;
+    try {
+      if (d.fullscreenElement || d.webkitFullscreenElement) {
+        (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      } else {
+        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+        const result = req && req.call(el, { navigationUI: 'hide' });
+        if (result && result.catch) result.catch(() => {});
+      }
+    } catch (e) {
+      /* full screen refused (iPhone Safari, embedded frames) — the game still works */
+    }
+  }
+
+  /* The install manifest only makes sense when served over HTTP(S), e.g. on GitHub Pages. */
+  _linkManifest() {
+    const meta = document.querySelector('meta[name="gravity:manifest"]');
+    if (!meta || !/^https?:$/.test(location.protocol)) return;
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = meta.content;
+    document.head.appendChild(link);
+  }
+
+  /* Keep a phone's screen from dimming mid-game. */
+  async _wake(on) {
+    try {
+      if (on && !this.wakeLock && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        this.wakeLock.addEventListener('release', () => (this.wakeLock = null));
+      } else if (!on && this.wakeLock) {
+        const lock = this.wakeLock;
+        this.wakeLock = null;
+        await lock.release();
+      }
+    } catch (e) {
+      this.wakeLock = null;
+    }
+  }
+
+  /* Short vibrations on phones that support them. */
+  buzz(pattern) {
+    if (!this.input.touchMode || !navigator.vibrate) return;
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {
+      /* not allowed here */
+    }
+  }
+
+  /*
+   * If frames keep taking longer than ~25 ms, render fewer pixels. High-density phone screens
+   * are the usual cause; the drop from 2x to 1.5x or 1x is barely visible but much cheaper.
+   */
+  _adaptQuality(dt) {
+    const pf = this.perf, r = this.renderer;
+    if (this.state !== 'playing' || dt >= 0.1) return;
+    pf.warm += dt;
+    if (pf.warm < 2) return;
+    pf.ema = pf.ema ? pf.ema * 0.95 + dt * 0.05 : dt;
+    pf.slow = pf.ema > 0.025 ? pf.slow + dt : Math.max(0, pf.slow - dt);
+    if (pf.slow > 3 && r.dpr > 1) {
+      r.maxDpr = Math.max(1, r.dpr - 0.5);
+      r.resize();
+      pf.slow = 0;
+      pf.ema = 0;
+      pf.warm = 0;
+    }
   }
 
   setHue(hue) {
@@ -84,8 +178,17 @@ class Game {
     this.flash = 0;
     this.acc = 0;
     this.state = 'playing';
+    this.input.releaseAll();
     this.hud.reset();
     this.hud.setScreen('playing');
+    this._wake(true);
+    this.runs++;
+    storageSet('gravity.runs', this.runs);
+    if (this.runs <= 3) {
+      this.hud.hint(this.input.touchMode
+        ? 'Drag anywhere to steer.'
+        : 'Move the mouse to steer. Hold Space to boost, press E for a gravity surge.', 6);
+    }
     this.hud.banner('You are an', 'Asteroid', TIERS[0].perk, '');
     this.hud.feed(`<b>${escapeHtml(name)}</b> entered the system.`, 'you');
     this.canvas.focus?.();
@@ -98,6 +201,7 @@ class Game {
     this.world = new World({ attract: true });
     this.attract.target = null;
     this.sfx.setBoost(false);
+    this._wake(false);
     this.hud.setScreen('menu');
     this.hud.setBest(this.best);
   }
@@ -106,10 +210,13 @@ class Game {
     if (paused && this.state === 'playing') {
       this.state = 'paused';
       this.sfx.setBoost(false);
+      this.input.releaseAll();
+      this._wake(false);
       this.hud.setScreen('paused');
     } else if (!paused && this.state === 'paused') {
       this.state = 'playing';
       this.last = performance.now();
+      this._wake(true);
       this.hud.setScreen('playing');
     }
   }
@@ -122,6 +229,9 @@ class Game {
     this.cam.shake += 16;
     this.sfx.play('death');
     this.sfx.setBoost(false);
+    this.input.releaseAll();
+    this._wake(false);
+    this.buzz([80, 60, 160]);
     this.hud.setScreen('dead');
 
     const s = p.stats;
@@ -141,6 +251,7 @@ class Game {
 
   onKey(code) {
     if (code === 'KeyM') this.toggleMute();
+    else if (code === 'KeyF') this.toggleFullscreen();
     else if (code === 'Escape' || code === 'KeyP') {
       if (this.state === 'playing') this.setPaused(true);
       else if (this.state === 'paused') this.setPaused(false);
@@ -177,6 +288,7 @@ class Game {
       if (this.deathTimer <= 0) this.hud.showDeath(this.deathInfo);
     }
 
+    this._adaptQuality(dt);
     this.updateCamera(dt);
     const p = this.player;
     const alive = this.state === 'playing' && p && p.alive;
@@ -206,6 +318,13 @@ class Game {
       dx = k.x / l;
       dy = k.y / l;
       throttle = 1;
+    } else if (inp.touchMode) {
+      const j = inp.joyVector();
+      if (j) {
+        dx = j.dx;
+        dy = j.dy;
+        throttle = j.throttle;
+      }
     } else if (inp.pointerActive) {
       const z = this.cam.zoom;
       const sx = (p.x - this.cam.x) * z + this.renderer.w / 2;
@@ -287,6 +406,7 @@ class Game {
             this.onPlayerDeath(e.eater);
           } else if (e.eater === p) {
             this.sfx.play('absorb', 1);
+            this.buzz(25);
             this.cam.shake += 5 + Math.min(12, e.gain / 25);
             w.floatText(p.x, p.y - p.r, `+${formatMass(e.gain)}`, '#80f0c8', 22);
             this.hud.feed(`You absorbed <b>${esc(e.victim.name)}</b> <span class="gain">+${formatMass(e.gain)}</span>`, 'you');
@@ -323,6 +443,7 @@ class Game {
           if (e.body === p) {
             if (e.to > e.from) {
               this.sfx.play('tierUp');
+              this.buzz([20, 40, 20]);
               this.hud.banner('Evolved into', tier.name, tier.perk);
               this.hud.feed(`You became a <b>${tier.name}</b>.`, 'you');
               this.flash = Math.max(this.flash, 0.18);
@@ -344,6 +465,7 @@ class Game {
           if (e.a === p || e.b === p) {
             this.cam.shake += 6;
             this.sfx.play('collide', 1);
+            this.buzz(15);
           }
           break;
         case 'supernovaWarning':
@@ -361,6 +483,7 @@ class Game {
         case 'supernovaHit':
           if (e.body === p) {
             w.floatText(p.x, p.y - p.r, `−${formatMass(e.loss)}`, '#ff8d9c', 22);
+            this.buzz(70);
             this.hud.feed(`Caught in the blast <span class="loss">−${formatMass(e.loss)}</span>`, 'warn');
           }
           break;

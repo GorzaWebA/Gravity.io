@@ -4,6 +4,7 @@ class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
+    this.maxDpr = 2;
     this.tex = new TextureBank();
     this.dpr = 1;
     this.w = 1;
@@ -21,7 +22,7 @@ class Renderer {
   }
 
   resize() {
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.canvas.width = Math.round(this.w * this.dpr);

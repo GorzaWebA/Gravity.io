@@ -1,8 +1,15 @@
 'use strict';
 
+/* Radius (px) of the on-screen joystick. A thumb this far from where it landed is full throttle. */
+const JOY_RADIUS = 56;
+const JOY_DEADZONE = 7;
+
 /*
  * Mouse, keyboard and touch. Steering is resolved by the Game (it needs the camera);
  * this class only records what the player is doing.
+ *
+ * Touch uses a floating joystick: wherever a thumb lands on the playing field becomes the
+ * stick's centre, so the thumb never covers your own body. Boost and surge are buttons.
  */
 class Input {
   constructor(canvas) {
@@ -14,7 +21,9 @@ class Input {
     this.mouseBoost = false;
     this.touchBoost = false;
     this.touchMode = false;
-    this.steerId = null;
+    this.joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+    this.joyEl = document.getElementById('joystick');
+    this.knobEl = this.joyEl ? this.joyEl.firstElementChild : null;
     this._surge = false;
     this._presses = [];
 
@@ -28,11 +37,15 @@ class Input {
     window.addEventListener('pointerup', (e) => this._onUp(e));
     window.addEventListener('pointercancel', (e) => this._onUp(e));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    window.addEventListener('blur', () => {
-      this.keys.clear();
-      this.mouseBoost = false;
-      this.touchBoost = false;
-    });
+    window.addEventListener('blur', () => this.releaseAll());
+
+    // Safari: stop pinch-zoom from hijacking the game while playing
+    const inGame = () => document.body.classList.contains('in-game');
+    for (const type of ['gesturestart', 'gesturechange']) {
+      document.addEventListener(type, (e) => {
+        if (inGame()) e.preventDefault();
+      });
+    }
 
     window.addEventListener('keydown', (e) => {
       if (this._typing(e)) {
@@ -53,11 +66,17 @@ class Input {
       if (!el) return;
       el.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        el.classList.add('pressed');
         on();
       });
-      el.addEventListener('pointerup', off);
-      el.addEventListener('pointerleave', off);
-      el.addEventListener('pointercancel', off);
+      const up = () => {
+        el.classList.remove('pressed');
+        off();
+      };
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointerleave', up);
+      el.addEventListener('pointercancel', up);
+      el.addEventListener('contextmenu', (e) => e.preventDefault());
     };
     hold('btn-boost', () => (this.touchBoost = true), () => (this.touchBoost = false));
     hold('btn-surge', () => (this._surge = true), () => {});
@@ -74,12 +93,31 @@ class Input {
     document.body.classList.toggle('touch', on);
   }
 
+  /* Drop every held control (window lost focus, game paused, player died). */
+  releaseAll() {
+    this.keys.clear();
+    this.mouseBoost = false;
+    this.touchBoost = false;
+    this._endJoy();
+    for (const id of ['btn-boost', 'btn-surge']) document.getElementById(id)?.classList.remove('pressed');
+  }
+
   _onMove(e) {
     if (e.pointerType === 'touch') {
-      if (e.pointerId !== this.steerId) return;
-    } else {
-      this._setTouch(false);
+      if (e.pointerId !== this.joy.id) return;
+      const j = this.joy;
+      j.x = e.clientX;
+      j.y = e.clientY;
+      // Floating stick: if the thumb runs past the rim, drag the centre along behind it
+      const dx = j.x - j.ox, dy = j.y - j.oy, len = Math.hypot(dx, dy);
+      if (len > JOY_RADIUS) {
+        j.ox = j.x - (dx / len) * JOY_RADIUS;
+        j.oy = j.y - (dy / len) * JOY_RADIUS;
+      }
+      this._drawJoy();
+      return;
     }
+    this._setTouch(false);
     this.mx = e.clientX;
     this.my = e.clientY;
     this.pointerActive = true;
@@ -88,11 +126,12 @@ class Input {
   _onDown(e) {
     if (e.pointerType === 'touch') {
       this._setTouch(true);
-      if (this.steerId === null) {
-        this.steerId = e.pointerId;
-        this.mx = e.clientX;
-        this.my = e.clientY;
-        this.pointerActive = true;
+      if (this.joy.id === null) {
+        const j = this.joy;
+        j.id = e.pointerId;
+        j.ox = j.x = e.clientX;
+        j.oy = j.y = e.clientY;
+        this._drawJoy();
       }
       return;
     }
@@ -106,13 +145,32 @@ class Input {
 
   _onUp(e) {
     if (e.pointerType === 'touch') {
-      if (e.pointerId === this.steerId) {
-        this.steerId = null;
-        this.pointerActive = false;
-      }
+      if (e.pointerId === this.joy.id) this._endJoy();
       return;
     }
     if (e.button === 0) this.mouseBoost = false;
+  }
+
+  _endJoy() {
+    this.joy.id = null;
+    if (this.joyEl) this.joyEl.classList.remove('on');
+  }
+
+  _drawJoy() {
+    if (!this.joyEl) return;
+    const j = this.joy;
+    this.joyEl.classList.add('on');
+    this.joyEl.style.transform = `translate(${j.ox}px, ${j.oy}px)`;
+    if (this.knobEl) this.knobEl.style.transform = `translate(${j.x - j.ox}px, ${j.y - j.oy}px)`;
+  }
+
+  /* Direction and throttle from the joystick, or null when no thumb is on it. */
+  joyVector() {
+    const j = this.joy;
+    if (j.id === null) return null;
+    const dx = j.x - j.ox, dy = j.y - j.oy, len = Math.hypot(dx, dy);
+    if (len < JOY_DEADZONE) return { dx: 0, dy: 0, throttle: 0 };
+    return { dx: dx / len, dy: dy / len, throttle: clamp((len - JOY_DEADZONE) / (JOY_RADIUS - JOY_DEADZONE), 0, 1) };
   }
 
   get boostHeld() {
