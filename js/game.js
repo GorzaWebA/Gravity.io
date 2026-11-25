@@ -380,11 +380,13 @@ class Game {
       const sy = (p.y - this.cam.y) * z + this.renderer.h / 2;
       const vx = inp.mx - sx, vy = inp.my - sy;
       const l = Math.hypot(vx, vy);
-      const dead = Math.max(6, p.drawR * z * 0.2);
+      // Cursor on your body: slow down to a stop. Just outside it: full speed, same as the bots.
+      const sr = p.drawR * z;
+      const dead = Math.max(5, sr * 0.3), full = sr + 24;
       if (l > dead) {
         dx = vx / l;
         dy = vy / l;
-        throttle = clamp((l - dead) / (80 + p.drawR * z * 0.6), 0, 1);
+        throttle = clamp((l - dead) / Math.max(1, full - dead), 0, 1);
       }
     }
     p.input.dx = dx;

@@ -26,7 +26,7 @@ You start as a rock the size of a pebble. Everything with mass pulls on everythi
 
 | | | Desktop | Phone or tablet |
 | :---: | :--- | :--- | :--- |
-| <img src="assets/readme/k-steer.png" alt="" width="48"> | **Steer** | Mouse (the farther the cursor, the faster) or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> | Drag anywhere. A stick appears under your thumb |
+| <img src="assets/readme/k-steer.png" alt="" width="48"> | **Steer** | Point the mouse where you want to go: full speed once it's just outside your body, slower as it gets closer. Or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> | Drag anywhere. A stick appears under your thumb |
 | <img src="assets/readme/k-boost.png" alt="" width="48"> | **Boost** | Hold <kbd>Space</kbd> or left click. Faster, but it burns mass | Hold **Boost** |
 | <img src="assets/readme/k-surge.png" alt="" width="48"> | **Gravity surge** | <kbd>E</kbd>, <kbd>Shift</kbd> or right click. Pulls 2.2× harder for 2.6 s, recharges in 14 s | Tap **Surge** |
 
@@ -66,7 +66,7 @@ Every form looks different and pulls harder than the one before it.
 | <img src="assets/readme/f-nebula.png" alt="" width="56"> | **Nebulae** hide you from hunters unless they're close, but they slow you down. |
 | <img src="assets/readme/f-wormhole.png" alt="" width="56"> | **Wormholes** throw anything up to 400 mass across the map. The bots know this and use them to escape. |
 | <img src="assets/readme/f-comet.png" alt="" width="56"> | **Comets** are fast, worth up to 30, and their paths bend around heavy bodies. |
-| <img src="assets/readme/f-decay.png" alt="" width="56"> | **Big things decay.** Above 150 mass you slowly shed mass, faster the bigger you get, so giants have to keep eating to stay giants. |
+| <img src="assets/readme/f-decay.png" alt="" width="56"> | **Big things are slow and decay.** The heavier a body is, the slower it moves, the same for you and the bots. Above 150 mass you also slowly shed mass, faster the bigger you get, so giants have to keep eating to stay giants. |
 | <img src="assets/readme/f-rivals.png" alt="" width="56"> | **Fifty-five rivals**, named after real moons and dwarf planets. Each has its own nerve and appetite: they flee, hunt what they can catch, give up on what they can't, and dive into wormholes when chased. |
 
 Green names are bodies you can eat, anything 20% lighter than you. Red names can eat you. Bodies close to your size bounce off and chip.

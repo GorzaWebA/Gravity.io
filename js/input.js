@@ -1,6 +1,6 @@
 'use strict';
 
-/* Radius (px) of the on-screen joystick. A thumb this far from where it landed is full throttle. */
+/* Radius (px) of the on-screen joystick. Full throttle is reached at 70% of it. */
 const JOY_RADIUS = 56;
 const JOY_DEADZONE = 7;
 
@@ -170,7 +170,8 @@ class Input {
     if (j.id === null) return null;
     const dx = j.x - j.ox, dy = j.y - j.oy, len = Math.hypot(dx, dy);
     if (len < JOY_DEADZONE) return { dx: 0, dy: 0, throttle: 0 };
-    return { dx: dx / len, dy: dy / len, throttle: clamp((len - JOY_DEADZONE) / (JOY_RADIUS - JOY_DEADZONE), 0, 1) };
+    // full speed at 70% of the way to the rim, so a relaxed thumb isn't stuck at half speed
+    return { dx: dx / len, dy: dy / len, throttle: clamp((len - JOY_DEADZONE) / (JOY_RADIUS * 0.7 - JOY_DEADZONE), 0, 1) };
   }
 
   get boostHeld() {
