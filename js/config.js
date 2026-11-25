@@ -6,7 +6,7 @@
  * Distances are world units (≈ pixels at zoom 1), times are seconds.
  */
 const CONFIG = {
-  WORLD_RADIUS: 3800,
+  WORLD_RADIUS: 5600,
   STEP: 1 / 60,                // fixed physics step
   MAX_STEPS_PER_FRAME: 5,
 
@@ -41,30 +41,31 @@ const CONFIG = {
   DECAY_START: 150,
   DECAY_RATE: 0.0022,
   DECAY_SOFTCAP: 3200,         // decay grows with the square of mass / this
+  MASS_CEILING: 6000,          // past this, decay climbs steeply so no one owns the map
 
   // Food
-  DUST_COUNT: 2000,
-  DUST_RESPAWN_PER_SEC: 60,
-  ROCK_COUNT: 140,
-  COMET_MAX: 3,
-  COMET_INTERVAL: [8, 15],
-  BELT_RADIUS: 0.55,           // asteroid belt, as a fraction of the world radius
+  DUST_COUNT: 4400,
+  DUST_RESPAWN_PER_SEC: 160,
+  ROCK_COUNT: 320,
+  COMET_MAX: 6,
+  COMET_INTERVAL: [5, 10],
+  BELT_RADII: [0.36, 0.7],     // two asteroid belts, as fractions of the world radius
   BELT_WIDTH: 260,
 
   // Bots
-  BOT_COUNT: 20,
+  BOT_COUNT: 55,
   SPAWN_SHIELD: 3,
 
   // World events
-  SUPERNOVA_FIRST: 40,
-  SUPERNOVA_INTERVAL: [60, 95],
+  SUPERNOVA_FIRST: 30,
+  SUPERNOVA_INTERVAL: [45, 75],
   SUPERNOVA_WARNING: 5,
   SUPERNOVA_BLAST: 1150,       // shockwave reach
   SUPERNOVA_CORE: 280,         // anything this close when it blows loses mass
-  WORMHOLE_PAIRS: 2,
+  WORMHOLE_PAIRS: 3,
   WORMHOLE_RADIUS: 60,
   WORMHOLE_MAX_MASS: 400,
-  NEBULA_COUNT: 5,
+  NEBULA_COUNT: 8,
 };
 
 /* Evolution ladder. `grav` and `range` multiply gravity strength and reach. */
@@ -114,4 +115,9 @@ const BOT_NAMES = [
   'Proteus', 'Charon', 'Nix', 'Hydra', 'Kerberos', 'Styx', 'Phobos', 'Deimos', 'Ceres', 'Vesta',
   'Pallas', 'Hygiea', 'Eris', 'Sedna', 'Haumea', 'Makemake', 'Quaoar', 'Orcus', 'Varuna', 'Ixion',
   'Salacia', 'Dysnomia', 'Arrokoth', 'Larissa', 'Galatea', 'Amalthea', 'Himalia', 'Pandora',
+  'Metis', 'Adrastea', 'Thebe', 'Leda', 'Elara', 'Lysithea', 'Carme', 'Ananke', 'Sinope', 'Pasiphae',
+  'Janus', 'Epimetheus', 'Helene', 'Telesto', 'Calypso', 'Atlas', 'Prometheus', 'Pan', 'Daphnis', 'Ymir',
+  'Tarvos', 'Kiviuq', 'Ijiraq', 'Cordelia', 'Ophelia', 'Bianca', 'Cressida', 'Desdemona', 'Juliet', 'Portia',
+  'Rosalind', 'Belinda', 'Puck', 'Sycorax', 'Caliban', 'Prospero', 'Setebos', 'Naiad', 'Thalassa', 'Despina',
+  'Halimede', 'Neso', 'Psamathe', 'Astraea', 'Hebe', 'Iris', 'Flora', 'Weywot', 'Vanth', 'Actaea',
 ];

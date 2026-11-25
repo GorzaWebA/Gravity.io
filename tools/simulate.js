@@ -11,7 +11,7 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..', 'js');
 const files = ['config.js', 'util.js', 'entities.js', 'ai.js', 'world.js'];
-const ctx = vm.createContext({ console, Math, window: {} });
+const ctx = vm.createContext({ console, window: {} }); // own Math: sharing the outer realm's is ~5x slower
 for (const f of files) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 vm.runInContext('globalThis.World = World; globalThis.CONFIG = CONFIG; globalThis.TIERS = TIERS;', ctx);
 

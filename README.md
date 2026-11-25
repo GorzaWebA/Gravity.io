@@ -61,13 +61,13 @@ Every form looks different and pulls harder than the one before it.
 | | What's out there |
 | :---: | :--- |
 | <img src="assets/readme/f-rings.png" alt="" width="56"> | **Red rings.** When something heavy is pulling on you, two rings appear around it. The dotted one is where its pull starts. Inside the solid one its pull beats your engine, and only a boost gets you out. |
-| <img src="assets/readme/f-supernova.png" alt="" width="56"> | **Supernovae.** Every 60 to 95 seconds a star starts pulsing. You get five seconds to clear its red ring. Anything caught inside loses 18% of its mass, and the blast leaves stardust and a pulsar worth 45. |
+| <img src="assets/readme/f-supernova.png" alt="" width="56"> | **Supernovae.** Every 45 to 75 seconds a star starts pulsing. You get five seconds to clear its red ring. Anything caught inside loses 18% of its mass, and the blast leaves stardust and a pulsar worth 45. |
 | <img src="assets/readme/f-grid.png" alt="" width="56"> | **The grid is the gravity.** The background grid dents around every mass, so you can see a well before you're in it. |
 | <img src="assets/readme/f-nebula.png" alt="" width="56"> | **Nebulae** hide you from hunters unless they're close, but they slow you down. |
 | <img src="assets/readme/f-wormhole.png" alt="" width="56"> | **Wormholes** throw anything up to 400 mass across the map. The bots know this and use them to escape. |
 | <img src="assets/readme/f-comet.png" alt="" width="56"> | **Comets** are fast, worth up to 30, and their paths bend around heavy bodies. |
 | <img src="assets/readme/f-decay.png" alt="" width="56"> | **Big things decay.** Above 150 mass you slowly shed mass, faster the bigger you get, so giants have to keep eating to stay giants. |
-| <img src="assets/readme/f-rivals.png" alt="" width="56"> | **Twenty rivals**, named after real moons and dwarf planets. Each has its own nerve and appetite: they flee, hunt what they can catch, give up on what they can't, and dive into wormholes when chased. |
+| <img src="assets/readme/f-rivals.png" alt="" width="56"> | **Fifty-five rivals**, named after real moons and dwarf planets. Each has its own nerve and appetite: they flee, hunt what they can catch, give up on what they can't, and dive into wormholes when chased. |
 
 Green names are bodies you can eat, anything 20% lighter than you. Red names can eat you. Bodies close to your size bounce off and chip.
 

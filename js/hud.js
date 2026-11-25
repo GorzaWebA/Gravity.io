@@ -255,9 +255,11 @@ class Hud {
     g.beginPath();
     g.arc(c, c, world.R * sc, 0, TAU);
     g.stroke();
-    g.beginPath();
-    g.arc(c, c, world.R * CONFIG.BELT_RADIUS * sc, 0, TAU);
-    g.stroke();
+    for (const belt of CONFIG.BELT_RADII) {
+      g.beginPath();
+      g.arc(c, c, world.R * belt * sc, 0, TAU);
+      g.stroke();
+    }
     g.setLineDash([]);
 
     for (const n of world.nebulae) {

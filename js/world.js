@@ -75,12 +75,14 @@ class World {
     for (let i = 0; i < CONFIG.ROCK_COUNT; i++) this._spawnRock(false);
   }
 
+  /* A starting population with a few giants, a middle class, and plenty of small fry. */
   _seedBots(n) {
     for (let i = 0; i < n; i++) {
+      const f = i / n;
       let m;
-      if (i < 2) m = rand(450, 900);
-      else if (i < 6) m = rand(110, 300);
-      else if (i < 12) m = rand(28, 80);
+      if (f < 0.1) m = rand(450, 900);
+      else if (f < 0.3) m = rand(110, 300);
+      else if (f < 0.6) m = rand(28, 80);
       else m = rand(10, 22);
       this._spawnBot(m);
     }
@@ -103,7 +105,7 @@ class World {
     for (let tries = 0; tries < 6; tries++) {
       if (Math.random() < 0.6) {
         const a = rand(0, TAU);
-        const rr = this.R * CONFIG.BELT_RADIUS + rand(-1, 1) * CONFIG.BELT_WIDTH;
+        const rr = this.R * pick(CONFIG.BELT_RADII) + rand(-1, 1) * CONFIG.BELT_WIDTH;
         p = { x: Math.cos(a) * rr, y: Math.sin(a) * rr };
       } else {
         p = randomInDisk(this.R * 0.95);
@@ -222,7 +224,12 @@ class World {
       if (b.mass > CONFIG.DECAY_START) {
         const excess = b.mass - CONFIG.DECAY_START;
         const soft = b.mass / CONFIG.DECAY_SOFTCAP;
-        b.setMass(b.mass - excess * CONFIG.DECAY_RATE * (1 + soft * soft) * TIERS[b.tier].decay * dt);
+        let k = 1 + soft * soft;
+        if (b.mass > CONFIG.MASS_CEILING) {
+          const over = (b.mass - CONFIG.MASS_CEILING) / 1500;
+          k += 4 * over * over;
+        }
+        b.setMass(b.mass - excess * CONFIG.DECAY_RATE * k * TIERS[b.tier].decay * dt);
       }
       this._checkTier(b);
       b.drawR += (b.r - b.drawR) * Math.min(1, dt * 8);
@@ -255,7 +262,7 @@ class World {
     } else {
       this._dustCarry = 0;
     }
-    if (this.counts.rock < CONFIG.ROCK_COUNT && Math.random() < dt * 4) this._spawnRock(true);
+    if (this.counts.rock < CONFIG.ROCK_COUNT && Math.random() < dt * 10) this._spawnRock(true);
 
     this.rankTimer -= dt;
     if (this.rankTimer <= 0) {
@@ -463,8 +470,7 @@ class World {
 
   _food(dt) {
     const grid = this.grid, food = this.food, tmp = this._tmp;
-    grid.clear();
-    for (let i = 0; i < food.length; i++) if (food[i].alive) grid.insert(food[i]);
+    grid.build(food);
 
     for (const b of this.bodies) {
       if (!b.alive) continue;

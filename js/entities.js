@@ -128,37 +128,61 @@ function makeFood(type, x, y, opts = {}) {
   return f;
 }
 
-/* Uniform grid for fast "what food is near me" queries. Rebuilt every step. */
+/*
+ * Uniform grid for fast "what food is near me" queries, rebuilt every step.
+ * Built as a counting sort into flat arrays: cells along a row are contiguous in `items`,
+ * so a query reads one slice per row instead of visiting thousands of little arrays.
+ */
 class FoodGrid {
   constructor(worldRadius, cell) {
     this.R = worldRadius + 600;
     this.cell = cell;
     this.n = Math.ceil((this.R * 2) / cell);
-    this.cells = new Array(this.n * this.n);
-    for (let i = 0; i < this.cells.length; i++) this.cells[i] = [];
-  }
-
-  clear() {
-    for (let i = 0; i < this.cells.length; i++) this.cells[i].length = 0;
+    this.start = new Int32Array(this.n * this.n + 1);
+    this.cursor = new Int32Array(this.n * this.n + 1);
+    this.cellOf = new Int32Array(4096);
+    this.items = [];
   }
 
   _c(v) {
-    return clamp(Math.floor((v + this.R) / this.cell), 0, this.n - 1);
+    const c = Math.floor((v + this.R) / this.cell);
+    return c < 0 ? 0 : c >= this.n ? this.n - 1 : c;
   }
 
-  insert(f) {
-    this.cells[this._c(f.y) * this.n + this._c(f.x)].push(f);
+  build(food) {
+    const len = food.length, start = this.start, cells = this.n * this.n;
+    if (this.cellOf.length < len) this.cellOf = new Int32Array(len * 2);
+    const cellOf = this.cellOf;
+    start.fill(0);
+    let live = 0;
+    for (let i = 0; i < len; i++) {
+      const f = food[i];
+      if (!f.alive) {
+        cellOf[i] = -1;
+        continue;
+      }
+      const c = this._c(f.y) * this.n + this._c(f.x);
+      cellOf[i] = c;
+      start[c + 1]++;
+      live++;
+    }
+    for (let c = 0; c < cells; c++) start[c + 1] += start[c];
+    const items = this.items, cursor = this.cursor;
+    items.length = live;
+    cursor.set(start);
+    for (let i = 0; i < len; i++) {
+      const c = cellOf[i];
+      if (c >= 0) items[cursor[c]++] = food[i];
+    }
   }
 
   queryInto(x, y, radius, out) {
     const x0 = this._c(x - radius), x1 = this._c(x + radius);
     const y0 = this._c(y - radius), y1 = this._c(y + radius);
+    const start = this.start, items = this.items;
     for (let cy = y0; cy <= y1; cy++) {
       const row = cy * this.n;
-      for (let cx = x0; cx <= x1; cx++) {
-        const cell = this.cells[row + cx];
-        for (let i = 0; i < cell.length; i++) out.push(cell[i]);
-      }
+      for (let i = start[row + x0], end = start[row + x1 + 1]; i < end; i++) out.push(items[i]);
     }
     return out;
   }
